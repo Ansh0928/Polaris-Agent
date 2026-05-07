@@ -5,7 +5,7 @@ import { Play, Loader2, CheckCircle, XCircle, X, Zap } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 interface StreamEvent {
-  type: 'tool_start' | 'tool_done' | 'reasoning' | 'done' | 'error'
+  type: 'tool_start' | 'tool_done' | 'reasoning' | 'done' | 'error' | 'email_sent'
   tool?: string
   args?: Record<string, unknown>
   output?: string
@@ -27,6 +27,7 @@ export function RunAgentButton() {
   const [error, setError] = useState<string | null>(null)
   const [toolCalls, setToolCalls] = useState<ToolCall[]>([])
   const [runId, setRunId] = useState<string | null>(null)
+  const [emailToast, setEmailToast] = useState<string | null>(null)
   const router = useRouter()
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -43,6 +44,7 @@ export function RunAgentButton() {
     setError(null)
     setToolCalls([])
     setRunId(null)
+    setEmailToast(null)
   }
 
   async function handleRun() {
@@ -92,6 +94,10 @@ export function RunAgentButton() {
                     : tc
                 )
               )
+            } else if (evt.type === 'email_sent') {
+              const to = evt.output || 'your inbox'
+              setEmailToast(to)
+              setTimeout(() => setEmailToast(null), 5000)
             } else if (evt.type === 'done') {
               setRunId(evt.output ?? null)
               setFinished(true)
@@ -112,6 +118,12 @@ export function RunAgentButton() {
 
   return (
     <>
+      {emailToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-2.5 px-4 py-2.5 bg-[#1a2a1a] border border-[#3fb950] rounded-lg shadow-xl text-[13px] text-[#3fb950] animate-fade-in">
+          <CheckCircle size={14} className="shrink-0" />
+          <span>Report emailed to <span className="font-mono text-white">{emailToast}</span></span>
+        </div>
+      )}
       <button
         onClick={handleRun}
         disabled={running}

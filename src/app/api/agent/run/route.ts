@@ -60,6 +60,7 @@ async function streamAgentRun(req: NextRequest): Promise<Response> {
 
         const shouldEmail = flagged.length > 0 || websitePrices.length > 0
         const emailHtml = shouldEmail ? await sendDailyEmail(report) : buildEmailHtml(report)
+        if (shouldEmail) send({ type: 'email_sent', output: process.env.ADMIN_EMAIL ?? '' })
 
         await sql`
           UPDATE agent_runs
