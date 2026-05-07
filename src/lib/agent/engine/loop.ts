@@ -200,7 +200,7 @@ export async function runAgentLoop(
     // Workflow nudge: steer the model to the next required step
     {
       const done = new Set(allToolCalls.map((tc) => tc.name))
-      const toolsThisIter = msg.tool_calls.map((tc) => (tc as { function?: { name: string } }).function?.name ?? '')
+      const toolsThisIter = (msg.tool_calls as Array<{ function?: { name: string } }>).map((tc) => tc.function?.name ?? '')
       if (toolsThisIter.includes('flag_alerts') && !done.has('fetch_supplier_prices')) {
         const flaggedNames = extractLoopData(allToolCalls).flagged.map((f) => f.inventory.product.name).slice(0, 6)
         if (flaggedNames.length > 0) {
