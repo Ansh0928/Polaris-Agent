@@ -2,9 +2,8 @@ import type { FlaggedItem, SupplierResult, WebsitePrice, InventoryWithProduct, T
 import { TOOL_DEFINITIONS, executeTool } from './tools'
 import { loadMemory } from './memory'
 import { loadSkills } from './skills'
-import { createOllamaClient, type OpenAIStyleMessage } from '@/lib/ollama-client'
-
-const client = createOllamaClient(process.env.LLM_BASE_URL ?? 'http://localhost:11434/v1')
+import { createClientForRun, type OpenAIStyleMessage } from '@/lib/ollama-client'
+import { saveCheckpoint } from './checkpoint'
 
 const MODEL = process.env.LLM_MODEL ?? 'qwen3:14b'
 const MAX_ITERATIONS = 12
@@ -56,138 +55,7 @@ export interface LoopResult {
   iterations: number
 }
 
-export async function runAgentLoop(
-  userMessage: string,
-  onEvent?: (event: ToolCallEvent) => void,
-): Promise<LoopResult> {
-  const [memory, skills] = await Promise.all([loadMemory(), Promise.resolve(loadSkills())])
-
-  const systemPrompt = [
-    'You are Polaris, an autonomous fresh food warehouse inventory management agent.',
-    'Your role: analyse current stock levels, identify expiry and reorder risks,',
-    'fetch live supplier prices, and generate clear reorder recommendations.',
-    'Use the available tools to gather data before synthesising recommendations.',
-    'Be specific — include product names, quantities (with units), and AUD prices.',
-    'After gathering data, save any useful observations via write_memory.',
-    'IMPORTANT: Never call the same tool twice. Each tool provides complete data in one call.',
-    'Workflow: check_inventory → flag_alerts → fetch_supplier_prices → check_website_prices → write_memory → respond.',
-    memory,
-    skills,
-  ]
-    .filter(Boolean)
-    .join('\n')
-
-  const messages: OpenAIStyleMessage[] = [
-    { role: 'system', content: systemPrompt },
-    { role: 'user', content: userMessage },
-  ]
-
-  const allToolCalls: ToolCallRecord[] = []
-  const toolTrace: ToolTrace[] = []
-  const reasoningBlocks: ReasoningBlock[] = []
-  let iterations = 0
-
-  while (iterations < MAX_ITERATIONS) {
-    iterations++
-
-    const response = await client.chat.completions.create({
-      model: MODEL,
-      messages,
-      tools: TOOL_DEFINITIONS,
-      tool_choice: 'auto',
-      temperature: 0.2,
-    })
-
-    if (!response.choices?.length) {
-      // Log the raw response to help diagnose rate limits or model errors
-      console.error('[loop] LLM empty choices:', JSON.stringify(response))
-      throw new Error(`LLM returned no choices — model may be unavailable (model=${MODEL}, iteration=${iterations})`)
-    }
-    const msg = response.choices[0].message
-
-    // Capture reasoning blocks before stripping
-    if (msg.content) {
-      const blocks = extractThinkBlocks(msg.content)
-      for (const text of blocks) {
-        reasoningBlocks.push({ after_tool_index: allToolCalls.length - 1, text })
-        onEvent?.({ type: 'reasoning', text, iteration: iterations })
-      }
-    }
-
-    messages.push(msg as OpenAIStyleMessage)
-
-    if (!msg.tool_calls?.length) {
-      const response_text = stripThinkBlocks(msg.content ?? '')
-
-      // Extract typed data from tool call logs for downstream pipeline
-      const flagged = allToolCalls
-        .filter((tc) => tc.name === 'flag_alerts')
-        .flatMap((tc) => {
-          try { return JSON.parse(tc.result) as FlaggedItem[] } catch { return [] }
-        })
-
-      const allInventory = allToolCalls
-        .filter((tc) => tc.name === 'check_inventory')
-        .flatMap((tc) => {
-          try { return JSON.parse(tc.result) as InventoryWithProduct[] } catch { return [] }
-        })
-
-      const supplierPrices = allToolCalls
-        .filter((tc) => tc.name === 'fetch_supplier_prices')
-        .flatMap((tc) => {
-          try { return JSON.parse(tc.result) as SupplierResult[] } catch { return [] }
-        })
-
-      const websitePrices = allToolCalls
-        .filter((tc) => tc.name === 'check_website_prices')
-        .flatMap((tc) => {
-          try { return JSON.parse(tc.result) as WebsitePrice[] } catch { return [] }
-        })
-
-      onEvent?.({ type: 'done', iteration: iterations })
-      return { response: response_text, toolCalls: allToolCalls, flagged, allInventory, supplierPrices, websitePrices, toolTrace, reasoningBlocks, iterations }
-    }
-
-    // Execute each tool call and collect results
-    const toolResults: OpenAIStyleMessage[] = []
-
-    for (const tc of msg.tool_calls) {
-      let args: Record<string, unknown> = {}
-      const fn = 'function' in tc ? tc.function : null
-      try {
-        args = JSON.parse((fn?.arguments) || '{}')
-      } catch {
-        // Malformed args — pass empty object
-      }
-
-      const toolName = fn?.name ?? ''
-      onEvent?.({ type: 'tool_start', tool: toolName, args, iteration: iterations })
-
-      const start = Date.now()
-      let result = ''
-      let toolError: string | undefined
-      try {
-        result = await executeTool(toolName, args)
-      } catch (err) {
-        toolError = err instanceof Error ? err.message : String(err)
-        result = JSON.stringify({ error: toolError })
-      }
-      const duration_ms = Date.now() - start
-
-      allToolCalls.push({ name: toolName, args, result })
-      toolTrace.push({ tool: toolName, input: args, output: result.slice(0, 2000), duration_ms, ...(toolError ? { error: toolError } : {}) })
-      onEvent?.({ type: 'tool_done', tool: toolName, output: result.slice(0, 500), duration_ms, iteration: iterations })
-
-      toolResults.push({
-        role: 'tool',
-        tool_call_id: tc.id,
-        content: result,
-      })
-    }
-
-    messages.push(...toolResults)
-  }
-
+function extractLoopData(allToolCalls: ToolCallRecord[]) {
   const flagged = allToolCalls
     .filter((tc) => tc.name === 'flag_alerts')
     .flatMap((tc) => { try { return JSON.parse(tc.result) as FlaggedItem[] } catch { return [] } })
@@ -204,13 +72,151 @@ export async function runAgentLoop(
     .filter((tc) => tc.name === 'check_website_prices')
     .flatMap((tc) => { try { return JSON.parse(tc.result) as WebsitePrice[] } catch { return [] } })
 
+  return { flagged, allInventory, supplierPrices, websitePrices }
+}
+
+export async function runAgentLoop(
+  userMessage: string,
+  onEvent?: (event: ToolCallEvent) => void,
+  runId?: string,
+): Promise<LoopResult> {
+  const [memory, skills] = await Promise.all([loadMemory(), Promise.resolve(loadSkills())])
+
+  const client = await createClientForRun(process.env.LLM_BASE_URL ?? 'http://localhost:11434/v1')
+
+  const systemPrompt = [
+    'You are Polaris, an autonomous fresh food warehouse inventory management agent.',
+    'Your role: analyse current stock levels, identify expiry and reorder risks,',
+    'fetch live supplier prices, and generate clear reorder recommendations.',
+    'Use the available tools to gather data before synthesising recommendations.',
+    'Be specific -- include product names, quantities (with units), and AUD prices.',
+    'After gathering data, save any useful observations via write_memory.',
+    'Workflow: check_inventory -> flag_alerts -> fetch_supplier_prices -> check_website_prices -> write_memory -> respond.',
+    memory,
+    skills,
+  ]
+    .filter(Boolean)
+    .join('\n')
+
+  const messages: OpenAIStyleMessage[] = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: userMessage },
+  ]
+
+  const allToolCalls: ToolCallRecord[] = []
+  const toolTrace: ToolTrace[] = []
+  const reasoningBlocks: ReasoningBlock[] = []
+  const calledTools = new Set<string>()
+  let iterations = 0
+
+  while (iterations < MAX_ITERATIONS) {
+    iterations++
+
+    const response = await client.chat.completions.create({
+      model: MODEL,
+      messages,
+      tools: TOOL_DEFINITIONS,
+      tool_choice: 'auto',
+      temperature: 0.2,
+    })
+
+    if (!response.choices?.length) {
+      console.error('[loop] LLM empty choices:', JSON.stringify(response))
+      throw new Error(`LLM returned no choices (model=${MODEL}, iteration=${iterations})`)
+    }
+    const msg = response.choices[0].message
+
+    if (msg.content) {
+      const blocks = extractThinkBlocks(msg.content)
+      for (const text of blocks) {
+        reasoningBlocks.push({ after_tool_index: allToolCalls.length - 1, text })
+        onEvent?.({ type: 'reasoning', text, iteration: iterations })
+      }
+    }
+
+    messages.push(msg as OpenAIStyleMessage)
+
+    if (!msg.tool_calls?.length) {
+      const response_text = stripThinkBlocks(msg.content ?? '')
+      onEvent?.({ type: 'done', iteration: iterations })
+      return { response: response_text, toolCalls: allToolCalls, ...extractLoopData(allToolCalls), toolTrace, reasoningBlocks, iterations }
+    }
+
+    const toolResults: OpenAIStyleMessage[] = []
+    let hadErrors = false
+
+    for (const tc of msg.tool_calls) {
+      let args: Record<string, unknown> = {}
+      const fn = 'function' in tc ? tc.function : null
+      try {
+        args = JSON.parse((fn?.arguments) || '{}')
+      } catch {
+        // malformed args -- use empty object
+      }
+
+      const toolName = fn?.name ?? ''
+      const callId = tc.id
+
+      // Code-level dedup: text directive alone can be ignored by the model
+      if (calledTools.has(toolName)) {
+        console.log(`[loop] dedup: skipping duplicate call to ${toolName}`)
+        toolResults.push({
+          role: 'tool',
+          tool_call_id: callId,
+          content: JSON.stringify({ error: `Tool "${toolName}" already called this run -- duplicate skipped` }),
+        })
+        continue
+      }
+
+      calledTools.add(toolName)
+      onEvent?.({ type: 'tool_start', tool: toolName, args, iteration: iterations })
+
+      const start = Date.now()
+      let result = ''
+      let toolError: string | undefined
+      try {
+        result = await executeTool(toolName, args, { runId })
+      } catch (err) {
+        toolError = err instanceof Error ? err.message : String(err)
+        result = JSON.stringify({ error: toolError })
+      }
+      const duration_ms = Date.now() - start
+
+      if (toolError) hadErrors = true
+
+      allToolCalls.push({ name: toolName, args, result })
+      toolTrace.push({ tool: toolName, input: args, output: result.slice(0, 2000), duration_ms, ...(toolError ? { error: toolError } : {}) })
+      onEvent?.({ type: 'tool_done', tool: toolName, output: result.slice(0, 500), duration_ms, iteration: iterations })
+
+      toolResults.push({ role: 'tool', tool_call_id: callId, content: result })
+    }
+
+    messages.push(...toolResults)
+
+    // Reflection: guide model recovery after all tool results are pushed
+    if (hadErrors) {
+      const errSummary = toolResults
+        .filter((r) => { try { return 'error' in JSON.parse(r.content ?? '') } catch { return false } })
+        .map((r) => { try { return (JSON.parse(r.content ?? '') as { error: string }).error } catch { return '' } })
+        .filter(Boolean)
+        .join('; ')
+
+      messages.push({
+        role: 'user',
+        content: `Tool call failed: ${errSummary}. Consider: (1) retry with different args, (2) skip this step and note the gap, (3) use an alternative tool. Choose the best recovery path and continue.`,
+      })
+    }
+
+    // Checkpoint every 3 iterations
+    if (runId && iterations % 3 === 0) {
+      await saveCheckpoint(runId, iterations, messages, allToolCalls)
+    }
+  }
+
   return {
     response: 'Max iterations reached without final response.',
     toolCalls: allToolCalls,
-    flagged,
-    allInventory,
-    supplierPrices,
-    websitePrices,
+    ...extractLoopData(allToolCalls),
     toolTrace,
     reasoningBlocks,
     iterations,

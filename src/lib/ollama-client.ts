@@ -71,6 +71,68 @@ function fromOllamaResponse(data: OllamaResponse) {
   }
 }
 
+export async function checkOllamaHealth(llmBaseUrl: string): Promise<boolean> {
+  try {
+    const base = llmBaseUrl.replace(/\/v1\/?$/, '')
+    const res = await fetch(`${base}/api/tags`, { signal: AbortSignal.timeout(5000) })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
+export function createGroqClient() {
+  const model = process.env.CLOUD_FALLBACK_MODEL ?? 'llama-3.3-70b-versatile'
+
+  const create = async (params: {
+    model: string
+    messages: OpenAIStyleMessage[]
+    tools?: unknown[]
+    tool_choice?: string
+    temperature?: number
+    response_format?: { type: string }
+    [key: string]: unknown
+  }) => {
+    const body: Record<string, unknown> = {
+      model,
+      messages: params.messages,
+      temperature: params.temperature ?? 0.2,
+      stream: false,
+    }
+    if (params.tools && (params.tools as unknown[]).length > 0) body.tools = params.tools
+    if (params.tool_choice) body.tool_choice = params.tool_choice
+    if (params.response_format) body.response_format = params.response_format
+
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(22_000),
+    })
+
+    if (!response.ok) {
+      const text = await response.text()
+      throw new Error(`Groq ${response.status}: ${text}`)
+    }
+
+    return response.json()
+  }
+
+  return { chat: { completions: { create } } }
+}
+
+export async function createClientForRun(llmBaseUrl: string) {
+  const healthy = await checkOllamaHealth(llmBaseUrl)
+  if (!healthy && process.env.GROQ_API_KEY) {
+    console.log('[loop] Ollama unreachable, routing to cloud fallback (Groq)')
+    return createGroqClient()
+  }
+  return createOllamaClient(llmBaseUrl)
+}
+
 export function createOllamaClient(llmBaseUrl: string) {
   const ollamaBase = llmBaseUrl.replace(/\/v1\/?$/, '')
 
@@ -104,7 +166,7 @@ export function createOllamaClient(llmBaseUrl: string) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(120_000),
+      signal: AbortSignal.timeout(22_000),
     })
 
     if (!response.ok) {

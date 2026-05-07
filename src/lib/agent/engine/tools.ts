@@ -4,6 +4,7 @@ import { fetchSupplierPrices } from '@/lib/agent/supplier'
 import { fetchWebsitePrices } from '@/lib/agent/website'
 import { fetchCompetitorPrices } from '@/lib/agent/competitor'
 import { writeMemory, readMemory } from './memory'
+import { sql } from '@/lib/db'
 import type { FlaggedItem } from '@/types'
 import type OpenAI from 'openai'
 
@@ -91,11 +92,47 @@ export const TOOL_DEFINITIONS: OpenAI.Chat.ChatCompletionTool[] = [
       parameters: { type: 'object', properties: {}, required: [] },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'create_purchase_order',
+      description:
+        'Create a draft purchase order for a product. The order is saved as a draft and an approval link is sent via email. Call this after confirming supplier price and reorder recommendation.',
+      parameters: {
+        type: 'object',
+        properties: {
+          product_id: { type: 'string', description: 'UUID of the product to order' },
+          supplier: { type: 'string', description: 'Supplier name (e.g. pfdfoodservice.com.au)' },
+          qty: { type: 'number', description: 'Quantity to order (in product units)' },
+          reason: { type: 'string', description: 'Why this order is being created — included in approval email' },
+          price_per_unit_aud: { type: 'number', description: 'Live price per unit in AUD (optional)' },
+        },
+        required: ['product_id', 'supplier', 'qty', 'reason'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'log_decision',
+      description:
+        'Log a significant agent decision with its reason for the audit trail. Call this whenever you make a non-trivial choice: choosing a supplier, skipping a reorder, escalating an alert.',
+      parameters: {
+        type: 'object',
+        properties: {
+          action: { type: 'string', description: 'What action was taken or decided' },
+          reason: { type: 'string', description: 'Why this decision was made' },
+        },
+        required: ['action', 'reason'],
+      },
+    },
+  },
 ]
 
 export async function executeTool(
   name: string,
   args: Record<string, unknown>,
+  context?: { runId?: string },
 ): Promise<string> {
   switch (name) {
     case 'check_inventory': {
@@ -154,6 +191,50 @@ export async function executeTool(
     case 'monitor_competitor_prices': {
       const results = await fetchCompetitorPrices()
       return JSON.stringify(results)
+    }
+
+    case 'create_purchase_order': {
+      const productId = String(args.product_id ?? '')
+      const supplier = String(args.supplier ?? '')
+      const qty = Number(args.qty ?? 0)
+      const reason = String(args.reason ?? '')
+      const pricePerUnit = args.price_per_unit_aud != null ? Number(args.price_per_unit_aud) : null
+      const runId = context?.runId ?? null
+
+      if (!productId || !supplier || qty <= 0) {
+        return JSON.stringify({ error: 'create_purchase_order: product_id, supplier, and qty > 0 are required' })
+      }
+
+      const rows = await sql`
+        INSERT INTO purchase_orders (run_id, product_id, supplier, qty, price_per_unit_aud, agent_reason)
+        VALUES (
+          ${runId}::uuid,
+          ${productId}::uuid,
+          ${supplier},
+          ${qty},
+          ${pricePerUnit},
+          ${reason}
+        )
+        RETURNING id, approve_token
+      `
+      const order = rows[0]
+      return JSON.stringify({ ok: true, order_id: order.id, approve_token: order.approve_token })
+    }
+
+    case 'log_decision': {
+      const action = String(args.action ?? '')
+      const reason = String(args.reason ?? '')
+      const runId = context?.runId ?? null
+
+      if (!action || !reason) {
+        return JSON.stringify({ error: 'log_decision: action and reason are required' })
+      }
+
+      await sql`
+        INSERT INTO decision_log (run_id, action, reason)
+        VALUES (${runId}::uuid, ${action}, ${reason})
+      `
+      return JSON.stringify({ ok: true })
     }
 
     default:
