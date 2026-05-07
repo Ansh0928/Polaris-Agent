@@ -144,6 +144,7 @@ export function createOllamaClient(llmBaseUrl: string) {
     tool_choice?: string
     temperature?: number
     response_format?: { type: string }
+    max_tokens?: number
     // ignored: think, thinking — handled natively
     [key: string]: unknown
   }) => {
@@ -152,7 +153,7 @@ export function createOllamaClient(llmBaseUrl: string) {
       think: false,
       stream: false,
       messages: toOllamaMessages(params.messages),
-      options: { temperature: params.temperature ?? 0.2 },
+      options: { temperature: params.temperature ?? 0.2, num_predict: params.max_tokens ?? 700 },
     }
 
     if (params.tools && (params.tools as unknown[]).length > 0) {
@@ -167,7 +168,7 @@ export function createOllamaClient(llmBaseUrl: string) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(90_000),
+      signal: AbortSignal.timeout(180_000),
     })
 
     if (!response.ok) {

@@ -1,5 +1,6 @@
 import type { FlaggedItem, SupplierResult, WebsitePrice, InventoryWithProduct, AgentReport } from '@/types'
 import { createClientForRun } from '@/lib/ollama-client'
+import { withRetry } from '@/lib/agent/engine/retry'
 
 export async function reasonWithHermes(
   flagged: FlaggedItem[],
@@ -92,16 +93,20 @@ Return a JSON object with this exact structure:
   "summary": "2-3 sentence executive summary covering inventory alerts and margin intelligence"
 }`
 
-  const client = await createClientForRun(process.env.LLM_BASE_URL ?? 'http://localhost:11434/v1')
-  const response = await client.chat.completions.create({
-    model: process.env.LLM_MODEL ?? 'qwen3:14b',
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt },
-    ],
-    response_format: { type: 'json_object' },
-    temperature: 0.2,
-  })
+  const llmBaseUrl = process.env.LLM_BASE_URL ?? 'http://localhost:11434/v1'
+  const response = await withRetry(async () => {
+    const client = await createClientForRun(llmBaseUrl)
+    return client.chat.completions.create({
+      model: process.env.LLM_MODEL ?? 'qwen3:14b',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.2,
+      max_tokens: 2000,
+    })
+  }, 3, 1000)
 
   if (!response.choices?.length) {
     throw new Error('reasonWithHermes: LLM returned no choices')
@@ -110,11 +115,45 @@ Return a JSON object with this exact structure:
   const content = response.choices[0]?.message?.content
   if (!content) throw new Error('Model returned empty response')
 
-  const jsonStr = content.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim()
-  const report = JSON.parse(jsonStr) as AgentReport
-  if (!Array.isArray(report.expiry_alerts)) throw new Error('reasonWithHermes: expiry_alerts is not an array')
-  if (!Array.isArray(report.low_stock_alerts)) throw new Error('reasonWithHermes: low_stock_alerts is not an array')
-  if (!Array.isArray(report.reorder_recommendations)) throw new Error('reasonWithHermes: reorder_recommendations is not an array')
+  let report: AgentReport
+  try {
+    const jsonStr = content.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim()
+    const parsed = JSON.parse(jsonStr) as AgentReport
+    if (!Array.isArray(parsed.expiry_alerts)) throw new Error('expiry_alerts not array')
+    if (!Array.isArray(parsed.low_stock_alerts)) throw new Error('low_stock_alerts not array')
+    if (!Array.isArray(parsed.reorder_recommendations)) throw new Error('reorder_recommendations not array')
+    report = parsed
+  } catch (err) {
+    console.error('[reason] JSON parse failed, building fallback report:', err)
+    report = {
+      generated_at: today,
+      expiry_alerts: flagged
+        .filter((f) => f.reason === 'expiry' || f.reason === 'both')
+        .map((f) => ({
+          product_name: f.inventory.product.name,
+          quantity: f.inventory.quantity,
+          unit: f.inventory.product.unit,
+          expiry_date: f.inventory.expiry_date ?? '',
+          days_to_expiry: f.inventory.days_to_expiry ?? 0,
+          location: f.inventory.location,
+        })),
+      low_stock_alerts: flagged
+        .filter((f) => f.reason === 'low_stock' || f.reason === 'both')
+        .map((f) => ({
+          product_name: f.inventory.product.name,
+          quantity: f.inventory.quantity,
+          unit: f.inventory.product.unit,
+          threshold: f.inventory.product.reorder_threshold,
+          location: f.inventory.location,
+        })),
+      reorder_recommendations: [],
+      supplier_prices: supplierPrices,
+      website_prices: websitePrices,
+      margin_alerts: [],
+      summary: `[Fallback report — model returned malformed JSON] ${flagged.length} items flagged requiring attention.`,
+    }
+  }
+
   // Always populate from our fetched data (overrides model placeholders)
   report.supplier_prices = supplierPrices
   report.website_prices = websitePrices
