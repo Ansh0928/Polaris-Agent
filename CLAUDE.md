@@ -170,3 +170,8 @@ NEXT_PUBLIC_AGENT_SECRET=...           # Client-side RunAgentButton
 - Do not use npm/yarn/pnpm — bun only
 - `reorder_log` inserts are wrapped in try/catch — failure is intentionally non-fatal, don't change that
 - Email is only sent when `flagged.length > 0` — `buildEmailHtml` builds the preview, `sendDailyEmail` actually sends
+
+## Health Stack
+
+- typecheck: bun run tsc --noEmit
+- test: bun run test
