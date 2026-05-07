@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: polaris-vision-api
+    runtime: docker
+    dockerfilePath: ./vision-api/Dockerfile
+    dockerContext: ./vision-api
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: YOLO_CONFIG_DIR
+        value: /app/.yolo
