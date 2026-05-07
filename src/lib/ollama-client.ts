@@ -167,7 +167,7 @@ export function createOllamaClient(llmBaseUrl: string) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(22_000),
+      signal: AbortSignal.timeout(90_000),
     })
 
     if (!response.ok) {
