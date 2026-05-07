@@ -50,7 +50,12 @@ export async function fetchSupplierPrices(flagged: FlaggedItem[]): Promise<Suppl
     for (const supplier of SUPPLIERS) {
       try {
         const query = `${productName} price site:${supplier}`
-        const searchResults = await tinyFishSearch(query)
+        let searchResults = await tinyFishSearch(query)
+        if (!searchResults.length) {
+          const species = productName.split(' ').at(-1) ?? productName
+          console.log(`[supplier] 0 results for "${query}", retrying with species "${species}"`)
+          searchResults = await tinyFishSearch(`${species} price site:${supplier}`)
+        }
         const match = searchResults[0]
         if (!match) continue
 

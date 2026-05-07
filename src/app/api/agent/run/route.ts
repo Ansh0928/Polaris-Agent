@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { timingSafeEqual } from 'crypto'
 import { sql } from '@/lib/db'
 import { runAgentLoop } from '@/lib/agent/engine/loop'
 import type { ToolCallEvent } from '@/lib/agent/engine/loop'
@@ -14,11 +15,29 @@ const DAILY_PROMPT = `Run the daily inventory analysis for this fresh food wareh
 4. Check live retail prices on the Tasman Star Seafood website using the check_website_prices tool.
 5. Compare warehouse cost prices against website retail prices to identify margin health.
 6. Save any useful margin trends, seasonal, or supplier observations to memory.
+7. For each reorder recommendation, create a draft purchase order and log the decision.
 When done, summarise your findings including both inventory alerts and margin intelligence.`
 
+function checkAuth(secret: string | null): boolean {
+  const expected = process.env.AGENT_SECRET
+  if (!secret || !expected) return false
+  try {
+    return timingSafeEqual(Buffer.from(secret), Buffer.from(expected))
+  } catch {
+    return false
+  }
+}
+
+async function createRunRow(): Promise<string> {
+  const rows = await sql`
+    INSERT INTO agent_runs (status) VALUES ('running') RETURNING id
+  `
+  return rows[0].id as string
+}
+
 async function streamAgentRun(req: NextRequest): Promise<Response> {
-  const secret = req.headers.get('authorization')?.replace('Bearer ', '')
-  if (secret !== process.env.AGENT_SECRET) {
+  const secret = req.headers.get('authorization')?.replace('Bearer ', '') ?? null
+  if (!checkAuth(secret)) {
     return new Response('Unauthorized', { status: 401 })
   }
 
@@ -29,9 +48,12 @@ async function streamAgentRun(req: NextRequest): Promise<Response> {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
       }
 
+      let runId: string | undefined
       try {
+        runId = await createRunRow()
+
         const { flagged, allInventory, supplierPrices, websitePrices, toolTrace, reasoningBlocks } =
-          await runAgentLoop(DAILY_PROMPT, send)
+          await runAgentLoop(DAILY_PROMPT, send, runId)
 
         const report = await reasonWithHermes(flagged, supplierPrices, websitePrices, allInventory)
         const extendedReport = { ...report, tool_trace: toolTrace, reasoning_blocks: reasoningBlocks }
@@ -39,12 +61,11 @@ async function streamAgentRun(req: NextRequest): Promise<Response> {
         const shouldEmail = flagged.length > 0 || websitePrices.length > 0
         const emailHtml = shouldEmail ? await sendDailyEmail(report) : buildEmailHtml(report)
 
-        const runResult = await sql`
-          INSERT INTO agent_runs (status, report_json, email_html)
-          VALUES ('success', ${JSON.stringify(extendedReport)}::jsonb, ${emailHtml})
-          RETURNING id
+        await sql`
+          UPDATE agent_runs
+          SET status = 'success', report_json = ${JSON.stringify(extendedReport)}::jsonb, email_html = ${emailHtml}
+          WHERE id = ${runId}::uuid
         `
-        const runId = runResult[0].id
 
         for (const rec of report.reorder_recommendations) {
           const price = supplierPrices.find(
@@ -55,13 +76,19 @@ async function streamAgentRun(req: NextRequest): Promise<Response> {
               INSERT INTO reorder_log (run_id, product_id, supplier, live_price_aud, recommended_qty)
               VALUES (${runId}::uuid, ${rec.product_id}::uuid, ${rec.supplier}, ${price?.price_aud ?? null}, ${rec.recommended_qty})
             `
-          } catch { /* non-fatal */ }
+          } catch (err) {
+            console.error('[route] reorder_log insert failed:', err, { runId, product: rec.product_name })
+          }
         }
 
         send({ type: 'done', output: runId })
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
-        await sql`INSERT INTO agent_runs (status, error_message) VALUES ('error', ${message})`
+        if (runId) {
+          await sql`UPDATE agent_runs SET status = 'error', error_message = ${message} WHERE id = ${runId}::uuid`
+        } else {
+          await sql`INSERT INTO agent_runs (status, error_message) VALUES ('error', ${message})`
+        }
         send({ type: 'error', output: message })
       } finally {
         controller.close()
@@ -79,36 +106,34 @@ async function streamAgentRun(req: NextRequest): Promise<Response> {
 }
 
 export async function POST(req: NextRequest) {
-  const secret = req.headers.get('authorization')?.replace('Bearer ', '')
-  if (secret !== process.env.AGENT_SECRET) {
+  const secret = req.headers.get('authorization')?.replace('Bearer ', '') ?? null
+  if (!checkAuth(secret)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // SSE streaming mode: POST /api/agent/run?stream=true
   const url = new URL(req.url)
   if (url.searchParams.get('stream') === 'true') {
     return streamAgentRun(req)
   }
 
+  let runId: string | undefined
   try {
-    const { flagged, allInventory, supplierPrices, websitePrices, toolTrace, reasoningBlocks } = await runAgentLoop(DAILY_PROMPT)
+    runId = await createRunRow()
+
+    const { flagged, allInventory, supplierPrices, websitePrices, toolTrace, reasoningBlocks } =
+      await runAgentLoop(DAILY_PROMPT, undefined, runId)
 
     const report = await reasonWithHermes(flagged, supplierPrices, websitePrices, allInventory)
-
-    // Extend report_json with observability data
     const extendedReport = { ...report, tool_trace: toolTrace, reasoning_blocks: reasoningBlocks }
 
     const shouldEmail = flagged.length > 0 || websitePrices.length > 0
-    const emailHtml = shouldEmail
-      ? await sendDailyEmail(report)
-      : buildEmailHtml(report)
+    const emailHtml = shouldEmail ? await sendDailyEmail(report) : buildEmailHtml(report)
 
-    const runResult = await sql`
-      INSERT INTO agent_runs (status, report_json, email_html)
-      VALUES ('success', ${JSON.stringify(extendedReport)}::jsonb, ${emailHtml})
-      RETURNING id
+    await sql`
+      UPDATE agent_runs
+      SET status = 'success', report_json = ${JSON.stringify(extendedReport)}::jsonb, email_html = ${emailHtml}
+      WHERE id = ${runId}::uuid
     `
-    const runId = runResult[0].id
 
     for (const rec of report.reorder_recommendations) {
       const price = supplierPrices.find(
@@ -117,23 +142,21 @@ export async function POST(req: NextRequest) {
       try {
         await sql`
           INSERT INTO reorder_log (run_id, product_id, supplier, live_price_aud, recommended_qty)
-          VALUES (
-            ${runId}::uuid,
-            ${rec.product_id}::uuid,
-            ${rec.supplier},
-            ${price?.price_aud ?? null},
-            ${rec.recommended_qty}
-          )
+          VALUES (${runId}::uuid, ${rec.product_id}::uuid, ${rec.supplier}, ${price?.price_aud ?? null}, ${rec.recommended_qty})
         `
-      } catch {
-        // Reorder log failure is non-fatal
+      } catch (err) {
+        console.error('[route] reorder_log insert failed:', err, { runId, product: rec.product_name })
       }
     }
 
     return NextResponse.json({ ok: true, run_id: runId, alerts: flagged.length })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    await sql`INSERT INTO agent_runs (status, error_message) VALUES ('error', ${message})`
+    if (runId) {
+      await sql`UPDATE agent_runs SET status = 'error', error_message = ${message} WHERE id = ${runId}::uuid`
+    } else {
+      await sql`INSERT INTO agent_runs (status, error_message) VALUES ('error', ${message})`
+    }
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }

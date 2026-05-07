@@ -1,5 +1,5 @@
 import type { FlaggedItem, SupplierResult, WebsitePrice, InventoryWithProduct, AgentReport } from '@/types'
-import { createOllamaClient } from '@/lib/ollama-client'
+import { createClientForRun } from '@/lib/ollama-client'
 
 export async function reasonWithHermes(
   flagged: FlaggedItem[],
@@ -92,7 +92,7 @@ Return a JSON object with this exact structure:
   "summary": "2-3 sentence executive summary covering inventory alerts and margin intelligence"
 }`
 
-  const client = createOllamaClient(process.env.LLM_BASE_URL ?? 'http://localhost:11434/v1')
+  const client = await createClientForRun(process.env.LLM_BASE_URL ?? 'http://localhost:11434/v1')
   const response = await client.chat.completions.create({
     model: process.env.LLM_MODEL ?? 'qwen3:14b',
     messages: [
@@ -112,6 +112,9 @@ Return a JSON object with this exact structure:
 
   const jsonStr = content.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim()
   const report = JSON.parse(jsonStr) as AgentReport
+  if (!Array.isArray(report.expiry_alerts)) throw new Error('reasonWithHermes: expiry_alerts is not an array')
+  if (!Array.isArray(report.low_stock_alerts)) throw new Error('reasonWithHermes: low_stock_alerts is not an array')
+  if (!Array.isArray(report.reorder_recommendations)) throw new Error('reasonWithHermes: reorder_recommendations is not an array')
   // Always populate from our fetched data (overrides model placeholders)
   report.supplier_prices = supplierPrices
   report.website_prices = websitePrices
