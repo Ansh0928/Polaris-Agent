@@ -1,10 +1,5 @@
-import OpenAI from 'openai'
 import type { FlaggedItem, SupplierResult, WebsitePrice, InventoryWithProduct, AgentReport } from '@/types'
-
-const client = new OpenAI({
-  baseURL: process.env.LLM_BASE_URL ?? 'http://localhost:11434/v1',
-  apiKey: process.env.OPENROUTER_API_KEY ?? 'ollama',
-})
+import { createOllamaClient } from '@/lib/ollama-client'
 
 export async function reasonWithHermes(
   flagged: FlaggedItem[],
@@ -97,8 +92,9 @@ Return a JSON object with this exact structure:
   "summary": "2-3 sentence executive summary covering inventory alerts and margin intelligence"
 }`
 
+  const client = createOllamaClient(process.env.LLM_BASE_URL ?? 'http://localhost:11434/v1')
   const response = await client.chat.completions.create({
-    model: process.env.LLM_MODEL ?? 'gemma3:27b',
+    model: process.env.LLM_MODEL ?? 'qwen3:14b',
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt },

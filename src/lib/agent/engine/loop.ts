@@ -1,15 +1,12 @@
-import OpenAI from 'openai'
 import type { FlaggedItem, SupplierResult, WebsitePrice, InventoryWithProduct, ToolTrace, ReasoningBlock } from '@/types'
 import { TOOL_DEFINITIONS, executeTool } from './tools'
 import { loadMemory } from './memory'
 import { loadSkills } from './skills'
+import { createOllamaClient, type OpenAIStyleMessage } from '@/lib/ollama-client'
 
-const client = new OpenAI({
-  baseURL: process.env.LLM_BASE_URL ?? 'http://localhost:11434/v1',
-  apiKey: process.env.OPENROUTER_API_KEY ?? 'ollama',
-})
+const client = createOllamaClient(process.env.LLM_BASE_URL ?? 'http://localhost:11434/v1')
 
-const MODEL = process.env.LLM_MODEL ?? 'gemma3:27b'
+const MODEL = process.env.LLM_MODEL ?? 'qwen3:14b'
 const MAX_ITERATIONS = 12
 
 function extractThinkBlocks(text: string): string[] {
@@ -78,7 +75,7 @@ export async function runAgentLoop(
     .filter(Boolean)
     .join('\n')
 
-  const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+  const messages: OpenAIStyleMessage[] = [
     { role: 'system', content: systemPrompt },
     { role: 'user', content: userMessage },
   ]
@@ -115,7 +112,7 @@ export async function runAgentLoop(
       }
     }
 
-    messages.push(msg as OpenAI.Chat.ChatCompletionMessageParam)
+    messages.push(msg as OpenAIStyleMessage)
 
     if (!msg.tool_calls?.length) {
       const response_text = stripThinkBlocks(msg.content ?? '')
@@ -150,7 +147,7 @@ export async function runAgentLoop(
     }
 
     // Execute each tool call and collect results
-    const toolResults: OpenAI.Chat.ChatCompletionToolMessageParam[] = []
+    const toolResults: OpenAIStyleMessage[] = []
 
     for (const tc of msg.tool_calls) {
       let args: Record<string, unknown> = {}
@@ -186,7 +183,7 @@ export async function runAgentLoop(
       })
     }
 
-    messages.push(...(toolResults as OpenAI.Chat.ChatCompletionMessageParam[]))
+    messages.push(...toolResults)
   }
 
   return {
