@@ -48,3 +48,8 @@ next-env.d.ts
 .claude-memory.md
 docs/superpowers/
 migrations/000_drop_all.sql
+.gstack/
+
+# YOLO model weights (downloaded at build time)
+*.pt
+*.onnx
