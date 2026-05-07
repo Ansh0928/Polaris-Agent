@@ -2,7 +2,7 @@ import { sql } from '@/lib/db'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, CheckCircle, XCircle, Clock, Zap } from 'lucide-react'
 import Link from 'next/link'
-import type { AgentRun, ToolTrace, ReasoningBlock } from '@/types'
+import type { AgentRun, AgentReport, ToolTrace, ReasoningBlock } from '@/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,8 +15,14 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
   if (!rows[0]) notFound()
   const run = rows[0] as unknown as AgentRun
 
-  const toolTrace: ToolTrace[] = run.report_json?.tool_trace ?? []
-  const reasoningBlocks: ReasoningBlock[] = run.report_json?.reasoning_blocks ?? []
+  const report = run.report_json as AgentReport | null
+  const toolTrace: ToolTrace[] = report?.tool_trace ?? []
+  const reasoningBlocks: ReasoningBlock[] = report?.reasoning_blocks ?? []
+  const expiryCount = report?.expiry_alerts?.length ?? 0
+  const lowStockCount = report?.low_stock_alerts?.length ?? 0
+  const marginCount = report?.margin_alerts?.length ?? 0
+  const reorderCount = report?.reorder_recommendations?.length ?? 0
+  const summary = report?.summary ?? null
 
   const getReasoningAt = (toolIndex: number) =>
     reasoningBlocks.filter((b) => b.after_tool_index === toolIndex)
@@ -42,6 +48,21 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
         <span className="flex items-center gap-1.5"><Clock size={12} />{new Date(run.ran_at).toLocaleString('en-AU', { timeZone: 'Australia/Sydney', dateStyle: 'long', timeStyle: 'short' })} AEST</span>
         <span className="flex items-center gap-1.5"><Zap size={12} />{toolTrace.length} tool calls</span>
       </div>
+
+      {/* Report summary stats */}
+      {run.status === 'success' && report && (
+        <div className="bg-[#0d1117] border border-[#21262d] rounded-lg p-5 space-y-4">
+          <div className="grid grid-cols-4 gap-3">
+            <SummaryChip label="Expiry Alerts" value={expiryCount} accent={expiryCount > 0 ? '#f85149' : '#3fb950'} />
+            <SummaryChip label="Low Stock" value={lowStockCount} accent={lowStockCount > 0 ? '#d29922' : '#3fb950'} />
+            <SummaryChip label="Margin Alerts" value={marginCount} accent={marginCount > 0 ? '#d29922' : '#3fb950'} />
+            <SummaryChip label="Reorder Recs" value={reorderCount} accent={reorderCount > 0 ? '#58a6ff' : '#8b949e'} />
+          </div>
+          {summary && (
+            <p className="text-[13px] text-[#8b949e] leading-relaxed border-t border-[#21262d] pt-4">{summary}</p>
+          )}
+        </div>
+      )}
 
       {run.error_message && (
         <div className="bg-[#290d0d] border border-[#f8514940] rounded-lg p-4 text-[13px] text-[#f85149]">
@@ -124,6 +145,15 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
           />
         </div>
       )}
+    </div>
+  )
+}
+
+function SummaryChip({ label, value, accent }: { label: string; value: number; accent: string }) {
+  return (
+    <div className="bg-[#161b22] rounded-lg px-4 py-3">
+      <p className="text-[10px] text-[#484f58] uppercase tracking-wider mb-1">{label}</p>
+      <p className="text-[22px] font-bold leading-none" style={{ color: accent }}>{value}</p>
     </div>
   )
 }
