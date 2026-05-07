@@ -69,6 +69,8 @@ export async function runAgentLoop(
     'Use the available tools to gather data before synthesising recommendations.',
     'Be specific — include product names, quantities (with units), and AUD prices.',
     'After gathering data, save any useful observations via write_memory.',
+    'IMPORTANT: Never call the same tool twice. Each tool provides complete data in one call.',
+    'Workflow: check_inventory → flag_alerts → fetch_supplier_prices → check_website_prices → write_memory → respond.',
     memory,
     skills,
   ]
@@ -186,13 +188,29 @@ export async function runAgentLoop(
     messages.push(...toolResults)
   }
 
+  const flagged = allToolCalls
+    .filter((tc) => tc.name === 'flag_alerts')
+    .flatMap((tc) => { try { return JSON.parse(tc.result) as FlaggedItem[] } catch { return [] } })
+
+  const allInventory = allToolCalls
+    .filter((tc) => tc.name === 'check_inventory')
+    .flatMap((tc) => { try { return JSON.parse(tc.result) as InventoryWithProduct[] } catch { return [] } })
+
+  const supplierPrices = allToolCalls
+    .filter((tc) => tc.name === 'fetch_supplier_prices')
+    .flatMap((tc) => { try { return JSON.parse(tc.result) as SupplierResult[] } catch { return [] } })
+
+  const websitePrices = allToolCalls
+    .filter((tc) => tc.name === 'check_website_prices')
+    .flatMap((tc) => { try { return JSON.parse(tc.result) as WebsitePrice[] } catch { return [] } })
+
   return {
     response: 'Max iterations reached without final response.',
     toolCalls: allToolCalls,
-    flagged: [],
-    allInventory: [],
-    supplierPrices: [],
-    websitePrices: [],
+    flagged,
+    allInventory,
+    supplierPrices,
+    websitePrices,
     toolTrace,
     reasoningBlocks,
     iterations,
