@@ -1,24 +1,27 @@
 import io
 import os
-from contextlib import asynccontextmanager
+import threading
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 from ultralytics import YOLO
 
-model = None
-
 os.environ.setdefault("YOLO_CONFIG_DIR", "/app/.yolo")
 
+model = None
+model_ready = threading.Event()
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
+
+def _load_model():
     global model
     model = YOLO("yolov8n.pt")
-    yield
+    model_ready.set()
 
 
-app = FastAPI(title="Warehouse Vision API", lifespan=lifespan)
+# Load model in background so uvicorn starts immediately
+threading.Thread(target=_load_model, daemon=True).start()
+
+app = FastAPI(title="Warehouse Vision API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -36,7 +39,7 @@ def health():
 @app.post("/detect")
 async def detect(image: UploadFile = File(...)):
     if model is None:
-        raise HTTPException(status_code=503, detail="Model not loaded yet")
+        raise HTTPException(status_code=503, detail="Model still loading, try again in 30s")
     contents = await image.read()
     img = Image.open(io.BytesIO(contents)).convert("RGB")
     results = model(img, verbose=False)
