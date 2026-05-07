@@ -48,6 +48,14 @@ function extractPrice(text: string): number | null {
 }
 
 export async function fetchSupplierPrices(flagged: FlaggedItem[]): Promise<SupplierResult[]> {
+  // Quick reachability check — fail fast if TinyFish DNS is down
+  try {
+    await fetch(`${TINYFISH_BASE}/health`, { signal: AbortSignal.timeout(2500) })
+  } catch {
+    console.log('[supplier] TinyFish unreachable — skipping supplier price fetch')
+    return []
+  }
+
   const results: SupplierResult[] = []
 
   for (const { inventory } of flagged) {

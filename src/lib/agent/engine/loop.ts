@@ -197,6 +197,31 @@ export async function runAgentLoop(
 
     messages.push(...toolResults)
 
+    // Workflow nudge: steer the model to the next required step
+    {
+      const done = new Set(allToolCalls.map((tc) => tc.name))
+      const toolsThisIter = msg.tool_calls.map((tc) => (tc as { function?: { name: string } }).function?.name ?? '')
+      if (toolsThisIter.includes('flag_alerts') && !done.has('fetch_supplier_prices')) {
+        const flaggedNames = extractLoopData(allToolCalls).flagged.map((f) => f.inventory.product.name).slice(0, 6)
+        if (flaggedNames.length > 0) {
+          messages.push({
+            role: 'user',
+            content: `Good. Now call fetch_supplier_prices with product_names: ${JSON.stringify(flaggedNames)} to get live AUD prices from PFD, Bidvest, and Harris Farm.`,
+          })
+        }
+      } else if (toolsThisIter.includes('fetch_supplier_prices') && !done.has('check_website_prices')) {
+        messages.push({
+          role: 'user',
+          content: 'Now call check_website_prices to fetch retail prices from the Tasman Star website for margin analysis.',
+        })
+      } else if (toolsThisIter.includes('check_website_prices') && !done.has('write_memory')) {
+        messages.push({
+          role: 'user',
+          content: 'Now call write_memory to save any useful observations (e.g. margin trends, supplier preferences, seasonal notes). Then respond with your final analysis.',
+        })
+      }
+    }
+
     // Reflection: guide model recovery after all tool results are pushed
     if (hadErrors) {
       const errSummary = toolResults
