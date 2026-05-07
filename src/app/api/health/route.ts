@@ -3,7 +3,7 @@ import { sql } from '@/lib/db'
 import { checkOllamaHealth } from '@/lib/ollama-client'
 
 export async function GET() {
-  const llmBaseUrl = process.env.LLM_BASE_URL ?? 'http://localhost:11434/v1'
+  const llmBaseUrl = (process.env.LLM_BASE_URL ?? 'http://localhost:11434/v1').trim()
 
   const [dbOk, tunnelOk] = await Promise.all([
     sql`SELECT 1`.then(() => true).catch(() => false),

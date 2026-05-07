@@ -7,6 +7,6 @@ async function main() {
     WHERE status = 'running'
     RETURNING id
   `
-  console.log(`Fixed ${result.length} stuck runs:`, result.map((r: { id: string }) => r.id))
+  console.log(`Fixed ${result.length} stuck runs:`, result.map((r: Record<string, unknown>) => r.id))
 }
 main()
