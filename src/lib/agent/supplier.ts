@@ -1,4 +1,5 @@
 import type { FlaggedItem, SupplierResult } from '@/types'
+import { withRetry } from '@/lib/agent/engine/retry'
 
 const TINYFISH_BASE = 'https://api.tinyfish.ai/v1'
 const SUPPLIERS = [
@@ -8,33 +9,37 @@ const SUPPLIERS = [
 ]
 
 async function tinyFishSearch(query: string): Promise<{ url: string; title: string }[]> {
-  const res = await fetch(`${TINYFISH_BASE}/search`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.TINYFISH_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ query, limit: 5 }),
-    signal: AbortSignal.timeout(5000),
-  })
-  if (!res.ok) throw new Error(`TinyFish search failed: ${res.status}`)
-  const data = await res.json()
-  return data.results ?? []
+  return withRetry(async () => {
+    const res = await fetch(`${TINYFISH_BASE}/search`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.TINYFISH_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query, limit: 5 }),
+      signal: AbortSignal.timeout(8000),
+    })
+    if (!res.ok) throw new Error(`TinyFish search failed: ${res.status}`)
+    const data = await res.json()
+    return data.results ?? []
+  }, 3, 500)
 }
 
 async function tinyFishFetch(url: string): Promise<string> {
-  const res = await fetch(`${TINYFISH_BASE}/fetch`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.TINYFISH_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ url }),
-    signal: AbortSignal.timeout(5000),
-  })
-  if (!res.ok) throw new Error(`TinyFish fetch failed: ${res.status}`)
-  const data = await res.json()
-  return data.text ?? data.content ?? ''
+  return withRetry(async () => {
+    const res = await fetch(`${TINYFISH_BASE}/fetch`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.TINYFISH_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ url }),
+      signal: AbortSignal.timeout(8000),
+    })
+    if (!res.ok) throw new Error(`TinyFish fetch failed: ${res.status}`)
+    const data = await res.json()
+    return data.text ?? data.content ?? ''
+  }, 3, 500)
 }
 
 function extractPrice(text: string): number | null {

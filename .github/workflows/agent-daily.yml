@@ -8,13 +8,52 @@ on:
 jobs:
   run-agent:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
+      - name: Health check
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+        run: |
+          echo "Checking system health..."
+          health=$(curl -sf "${APP_URL}/api/health" || echo '{"status":"unreachable"}')
+          echo "Health response: $health"
+
+          status=$(echo "$health" | python3 -c "import sys,json; print(json.load(sys.stdin).get('status','unknown'))")
+          tunnel=$(echo "$health" | python3 -c "import sys,json; print(json.load(sys.stdin).get('tunnel','unknown'))")
+          groq=$(echo "$health" | python3 -c "import sys,json; print(json.load(sys.stdin).get('groq_fallback','unknown'))")
+
+          echo "Status=$status | Tunnel=$tunnel | Groq=$groq"
+
+          if [[ "$status" == "unreachable" ]]; then
+            echo "ERROR: App is unreachable"
+            exit 1
+          fi
+
+          if [[ "$status" == "degraded" ]]; then
+            echo "WARNING: System degraded — continuing anyway (Groq fallback may activate)"
+          fi
+
       - name: Trigger Polaris agent
         env:
           APP_URL: ${{ secrets.APP_URL }}
           AGENT_SECRET: ${{ secrets.AGENT_SECRET }}
         run: |
-          curl -s -X POST "${APP_URL}/api/agent/run" \
+          echo "Triggering agent run..."
+          response=$(curl -s -w "\n%{http_code}" -X POST "${APP_URL}/api/agent/run" \
             -H "Authorization: Bearer ${AGENT_SECRET}" \
             -H "Content-Type: application/json" \
-            --fail-with-body
+            --max-time 300)
+
+          http_code=$(echo "$response" | tail -1)
+          body=$(echo "$response" | head -1)
+
+          echo "HTTP $http_code"
+          echo "Response: $body"
+
+          if [[ "$http_code" != "200" ]]; then
+            echo "ERROR: Agent run failed with HTTP $http_code"
+            exit 1
+          fi
+
+          alerts=$(echo "$body" | python3 -c "import sys,json; print(json.load(sys.stdin).get('alerts',0))" 2>/dev/null || echo "unknown")
+          echo "SUCCESS: Agent completed. Flagged alerts: $alerts"

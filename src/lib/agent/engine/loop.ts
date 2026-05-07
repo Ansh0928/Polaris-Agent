@@ -4,6 +4,7 @@ import { loadMemory } from './memory'
 import { loadSkills } from './skills'
 import { createClientForRun, type OpenAIStyleMessage } from '@/lib/ollama-client'
 import { saveCheckpoint } from './checkpoint'
+import { withRetry } from './retry'
 
 const MODEL = process.env.LLM_MODEL ?? 'qwen3:14b'
 const MAX_ITERATIONS = 12
@@ -82,7 +83,7 @@ export async function runAgentLoop(
 ): Promise<LoopResult> {
   const [memory, skills] = await Promise.all([loadMemory(), Promise.resolve(loadSkills())])
 
-  const client = await createClientForRun(process.env.LLM_BASE_URL ?? 'http://localhost:11434/v1')
+  const llmBaseUrl = process.env.LLM_BASE_URL ?? 'http://localhost:11434/v1'
 
   const systemPrompt = [
     'You are Polaris, an autonomous fresh food warehouse inventory management agent.',
@@ -112,13 +113,16 @@ export async function runAgentLoop(
   while (iterations < MAX_ITERATIONS) {
     iterations++
 
-    const response = await client.chat.completions.create({
-      model: MODEL,
-      messages,
-      tools: TOOL_DEFINITIONS,
-      tool_choice: 'auto',
-      temperature: 0.2,
-    })
+    const response = await withRetry(async () => {
+      const client = await createClientForRun(llmBaseUrl)
+      return client.chat.completions.create({
+        model: MODEL,
+        messages,
+        tools: TOOL_DEFINITIONS,
+        tool_choice: 'auto',
+        temperature: 0.2,
+      })
+    }, 3, 1000)
 
     if (!response.choices?.length) {
       console.error('[loop] LLM empty choices:', JSON.stringify(response))
@@ -207,16 +211,30 @@ export async function runAgentLoop(
       })
     }
 
+    // Stall detection: same 3-tool sequence repeated twice = model looping
+    if (allToolCalls.length >= 6) {
+      const last3 = allToolCalls.slice(-3).map((tc) => tc.name).join(',')
+      const prev3 = allToolCalls.slice(-6, -3).map((tc) => tc.name).join(',')
+      if (last3 === prev3) {
+        messages.push({
+          role: 'user',
+          content: 'You are repeating the same tool sequence. Stop collecting data and write your final response now.',
+        })
+      }
+    }
+
     // Checkpoint every 3 iterations
     if (runId && iterations % 3 === 0) {
       await saveCheckpoint(runId, iterations, messages, allToolCalls)
     }
   }
 
+  const loopData = extractLoopData(allToolCalls)
+  onEvent?.({ type: 'done', iteration: iterations })
   return {
-    response: 'Max iterations reached without final response.',
+    response: `Analysis reached max iterations (${MAX_ITERATIONS}). Collected: ${allToolCalls.length} tool calls, ${loopData.flagged.length} flagged items.`,
     toolCalls: allToolCalls,
-    ...extractLoopData(allToolCalls),
+    ...loopData,
     toolTrace,
     reasoningBlocks,
     iterations,
