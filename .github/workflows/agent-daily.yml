@@ -1,0 +1,20 @@
+name: Polaris Daily Agent
+
+on:
+  schedule:
+    - cron: '0 20 * * *'  # 6am AEST (UTC+10)
+  workflow_dispatch:
+
+jobs:
+  run-agent:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Polaris agent
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          AGENT_SECRET: ${{ secrets.AGENT_SECRET }}
+        run: |
+          curl -s -X POST "${APP_URL}/api/agent/run" \
+            -H "Authorization: Bearer ${AGENT_SECRET}" \
+            -H "Content-Type: application/json" \
+            --fail-with-body
