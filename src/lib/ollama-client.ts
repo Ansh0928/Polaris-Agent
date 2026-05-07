@@ -125,11 +125,13 @@ export function createGroqClient() {
 }
 
 export async function createClientForRun(llmBaseUrl: string) {
-  const isExplicit = !!process.env.LLM_BASE_URL
-  const healthy = isExplicit ? true : await checkOllamaHealth(llmBaseUrl)
-  if (!healthy && process.env.GROQ_API_KEY) {
-    console.log('[loop] Ollama unreachable, routing to cloud fallback (Groq)')
-    return createGroqClient()
+  const healthy = await checkOllamaHealth(llmBaseUrl)
+  if (!healthy) {
+    if (process.env.GROQ_API_KEY) {
+      console.log('[loop] Ollama unreachable, routing to Groq fallback')
+      return createGroqClient()
+    }
+    throw new Error('No LLM available: Ollama unreachable and GROQ_API_KEY not configured')
   }
   return createOllamaClient(llmBaseUrl)
 }
