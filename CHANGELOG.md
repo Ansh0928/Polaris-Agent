@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.3] - 2026-05-08
+
+### Changed
+- Mobile responsive UI: sidebar replaced with hamburger drawer pattern on small screens
+- Overview stat grid stacks 2-up on mobile (was always 4-column)
+- Overview panels stack vertically on mobile (was always side-by-side)
+- Inventory table hides Category and Location columns on small screens; date display shortened to `(Nd)` format on mobile
+- Logs table hides Tool Calls and Items Flagged columns on small screens; reduced cell padding on mobile
+
 ## [0.1.2] - 2026-05-08
 
 ### Changed
