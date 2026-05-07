@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.1.3] - 2026-05-08
+
+### Changed
+- Mobile responsive UI: sidebar replaced with hamburger drawer pattern on small screens
+- Overview stat grid stacks 2-up on mobile (was always 4-column)
+- Overview panels stack vertically on mobile (was always side-by-side)
+- Inventory table hides Category and Location columns on small screens; date display shortened to `(Nd)` format on mobile
+- Logs table hides Tool Calls and Items Flagged columns on small screens; reduced cell padding on mobile
+
+## [0.1.2] - 2026-05-08
+
+### Changed
+- Tunnel infrastructure now runs under launchd with `KeepAlive=true` — when the Cloudflare quick tunnel dies, launchd automatically restarts the script, which starts a fresh tunnel and pushes the new URL to Vercel via REST API (no redeploy required)
+- Replaced Vercel CLI dependency with a direct `PATCH /v9/projects/{id}/env/{envId}` REST call using a token stored at `~/Library/Scripts/polaris/.vercel-token`
+- `tunnel-update.sh` now blocks on the tunnel process (`wait $TUNNEL_PID`) so launchd receives the exit signal correctly
+
+### Added
+- `scripts/launchd/com.polaris.ollama.plist` — keeps `ollama serve` alive at login
+- `scripts/launchd/com.polaris.tunnel.plist` — runs `tunnel-update.sh` at login, restarts on exit (ThrottleInterval=15s)
+- `scripts/launchd/com.polaris.cloudflared.plist` — reference plist for named-tunnel mode
+- Ollama readiness wait loop (30 × 2s) in `tunnel-update.sh` — handles Mac wake latency before the tunnel starts
+
 ## [0.1.1] - 2026-05-08
 
 ### Fixed

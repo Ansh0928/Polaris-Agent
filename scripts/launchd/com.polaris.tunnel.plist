@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.polaris.tunnel</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/tasmanstar/Library/Scripts/polaris/tunnel-update.sh</string>
+    </array>
+
+    <!-- Restart automatically when tunnel dies (new URL → Vercel updated) -->
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+
+    <!-- Wait 15s before restarting to avoid hammering Cloudflare on repeated failures -->
+    <key>ThrottleInterval</key>
+    <integer>15</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/tasmanstar/Library/Logs/polaris-tunnel.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/tasmanstar/Library/Logs/polaris-tunnel.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/tasmanstar</string>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>POLARIS_DIR</key>
+        <string>/Users/tasmanstar/Desktop/demo/polaris</string>
+    </dict>
+</dict>
+</plist>

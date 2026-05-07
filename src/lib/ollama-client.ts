@@ -81,9 +81,13 @@ export async function checkOllamaHealth(llmBaseUrl: string): Promise<boolean> {
   }
 }
 
-export function createGroqClient() {
-  const model = process.env.CLOUD_FALLBACK_MODEL ?? 'llama-3.3-70b-versatile'
-
+function makeOpenAICompatClient(
+  endpoint: string,
+  apiKey: string,
+  defaultModel: string,
+  label: string,
+  timeoutMs = 60_000,
+) {
   const create = async (params: {
     model: string
     messages: OpenAIStyleMessage[]
@@ -94,7 +98,7 @@ export function createGroqClient() {
     [key: string]: unknown
   }) => {
     const body: Record<string, unknown> = {
-      model,
+      model: defaultModel,
       messages: params.messages,
       temperature: params.temperature ?? 0.2,
       stream: false,
@@ -103,19 +107,16 @@ export function createGroqClient() {
     if (params.tool_choice) body.tool_choice = params.tool_choice
     if (params.response_format) body.response_format = params.response_format
 
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const response = await fetch(endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-      },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(22_000),
+      signal: AbortSignal.timeout(timeoutMs),
     })
 
     if (!response.ok) {
       const text = await response.text()
-      throw new Error(`Groq ${response.status}: ${text}`)
+      throw new Error(`${label} ${response.status}: ${text}`)
     }
 
     return response.json()
@@ -124,16 +125,41 @@ export function createGroqClient() {
   return { chat: { completions: { create } } }
 }
 
+export function createOpenRouterClient() {
+  return makeOpenAICompatClient(
+    'https://openrouter.ai/api/v1/chat/completions',
+    process.env.OPENROUTER_API_KEY ?? '',
+    process.env.OPENROUTER_MODEL ?? 'openai/gpt-oss-20b:free',
+    'OpenRouter',
+    60_000,
+  )
+}
+
+export function createGroqClient() {
+  return makeOpenAICompatClient(
+    'https://api.groq.com/openai/v1/chat/completions',
+    process.env.GROQ_API_KEY ?? '',
+    process.env.CLOUD_FALLBACK_MODEL ?? 'llama-3.3-70b-versatile',
+    'Groq',
+    22_000,
+  )
+}
+
 export async function createClientForRun(llmBaseUrl: string) {
   const healthy = await checkOllamaHealth(llmBaseUrl)
-  if (!healthy) {
-    if (process.env.GROQ_API_KEY) {
-      console.log('[loop] Ollama unreachable, routing to Groq fallback')
-      return createGroqClient()
-    }
-    throw new Error('No LLM available: Ollama unreachable and GROQ_API_KEY not configured')
+  if (healthy) return createOllamaClient(llmBaseUrl)
+
+  if (process.env.OPENROUTER_API_KEY) {
+    console.log('[loop] Ollama unreachable — routing to OpenRouter fallback')
+    return createOpenRouterClient()
   }
-  return createOllamaClient(llmBaseUrl)
+
+  if (process.env.GROQ_API_KEY) {
+    console.log('[loop] Ollama + OpenRouter unavailable — routing to Groq fallback')
+    return createGroqClient()
+  }
+
+  throw new Error('No LLM available: Ollama unreachable and no fallback API keys configured')
 }
 
 export function createOllamaClient(llmBaseUrl: string) {
