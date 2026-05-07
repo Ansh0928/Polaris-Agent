@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.polaris.cloudflared</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/cloudflared</string>
+        <string>tunnel</string>
+        <string>run</string>
+        <string>polaris-qwen</string>
+    </array>
+
+    <!-- Start at login and restart on crash -->
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+
+    <!-- Wait 10s before restarting on crash (avoids tight crash loops) -->
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/tasmanstar/Library/Logs/polaris-cloudflared.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/tasmanstar/Library/Logs/polaris-cloudflared.log</string>
+</dict>
+</plist>
