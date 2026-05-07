@@ -39,9 +39,13 @@ export function InventoryTable({ rows, onDelete }: Props) {
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-[#21262d]">
-            {['Product', 'Category', 'Stock', 'Expiry', 'Location', 'Flags', ''].map((h) => (
-              <th key={h} className="px-4 py-3 text-left text-xs text-[#8b949e] font-medium">{h}</th>
-            ))}
+            <th className="px-4 py-3 text-left text-xs text-[#8b949e] font-medium">Product</th>
+            <th className="px-4 py-3 text-left text-xs text-[#8b949e] font-medium hidden sm:table-cell">Category</th>
+            <th className="px-4 py-3 text-left text-xs text-[#8b949e] font-medium">Stock</th>
+            <th className="px-4 py-3 text-left text-xs text-[#8b949e] font-medium">Expiry</th>
+            <th className="px-4 py-3 text-left text-xs text-[#8b949e] font-medium hidden md:table-cell">Location</th>
+            <th className="px-4 py-3 text-left text-xs text-[#8b949e] font-medium"></th>
+            <th className="px-4 py-3"></th>
           </tr>
         </thead>
         <tbody>
@@ -51,12 +55,12 @@ export function InventoryTable({ rows, onDelete }: Props) {
             return (
               <tr key={row.id} className="border-b border-[#21262d] hover:bg-[#161b22] transition-colors">
                 <td className="px-4 py-3 font-medium text-white">{row.product_name}</td>
-                <td className="px-4 py-3 text-[#8b949e] capitalize">{row.category}</td>
-                <td className="px-4 py-3 text-white">{row.quantity} {row.unit}</td>
-                <td className={`px-4 py-3 ${getDaysColor(row.days_to_expiry)}`}>
-                  {row.expiry_date} ({row.days_to_expiry}d)
+                <td className="px-4 py-3 text-[#8b949e] capitalize hidden sm:table-cell">{row.category}</td>
+                <td className="px-4 py-3 text-white whitespace-nowrap">{row.quantity} {row.unit}</td>
+                <td className={`px-4 py-3 whitespace-nowrap ${getDaysColor(row.days_to_expiry)}`}>
+                  <span className="hidden sm:inline">{row.expiry_date} </span>({row.days_to_expiry}d)
                 </td>
-                <td className="px-4 py-3 text-[#8b949e]">{row.location}</td>
+                <td className="px-4 py-3 text-[#8b949e] hidden md:table-cell">{row.location}</td>
                 <td className="px-4 py-3">
                   <div className="flex gap-1.5">
                     {isExpiring && <AlertTriangle size={14} className="text-red-400" />}

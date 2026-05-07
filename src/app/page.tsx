@@ -82,7 +82,7 @@ export default async function OverviewPage() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatBox label="Expiring Soon" value={expiring.length} accent={expiring.length > 0 ? '#f85149' : '#8b949e'} icon={<AlertTriangle size={14} />} />
         <StatBox label="Low Stock" value={lowStock.length} accent={lowStock.length > 0 ? '#d29922' : '#8b949e'} icon={<TrendingDown size={14} />} />
         <StatBox label="Runs (7d)" value={runs.length} accent="#8b949e" icon={<Activity size={14} />} />
@@ -90,7 +90,7 @@ export default async function OverviewPage() {
       </div>
 
       {/* Two-column panels */}
-      <div className="grid grid-cols-[1fr_340px] gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_340px] gap-4">
         {/* Left: Agent Observability */}
         <div className="bg-[#0d1117] border border-[#21262d] rounded-lg overflow-hidden">
           <div className="px-5 py-3.5 border-b border-[#21262d]">

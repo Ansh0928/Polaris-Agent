@@ -22,11 +22,11 @@ export default async function LogsPage() {
         <table className="w-full text-[13px]">
           <thead>
             <tr className="border-b border-[#21262d]">
-              <th className="text-left px-5 py-3 text-[11px] font-semibold text-[#8b949e] uppercase tracking-wider">Time</th>
-              <th className="text-left px-5 py-3 text-[11px] font-semibold text-[#8b949e] uppercase tracking-wider">Status</th>
-              <th className="text-left px-5 py-3 text-[11px] font-semibold text-[#8b949e] uppercase tracking-wider">Tool Calls</th>
-              <th className="text-left px-5 py-3 text-[11px] font-semibold text-[#8b949e] uppercase tracking-wider">Items Flagged</th>
-              <th className="px-5 py-3" />
+              <th className="text-left px-3 md:px-5 py-3 text-[11px] font-semibold text-[#8b949e] uppercase tracking-wider">Time</th>
+              <th className="text-left px-3 md:px-5 py-3 text-[11px] font-semibold text-[#8b949e] uppercase tracking-wider">Status</th>
+              <th className="text-left px-3 md:px-5 py-3 text-[11px] font-semibold text-[#8b949e] uppercase tracking-wider hidden sm:table-cell">Tool Calls</th>
+              <th className="text-left px-3 md:px-5 py-3 text-[11px] font-semibold text-[#8b949e] uppercase tracking-wider hidden sm:table-cell">Items Flagged</th>
+              <th className="px-3 md:px-5 py-3" />
             </tr>
           </thead>
           <tbody>
@@ -42,10 +42,10 @@ export default async function LogsPage() {
               const isError = row.status === 'error'
               return (
                 <tr key={row.id as string} className="border-b border-[#161b22] hover:bg-[#161b22] transition-colors">
-                  <td className="px-5 py-3 text-[#c9d1d9]">
+                  <td className="px-3 md:px-5 py-3 text-[#c9d1d9] whitespace-nowrap text-[12px]">
                     {new Date(row.ran_at as string).toLocaleString('en-AU', { timeZone: 'Australia/Sydney', dateStyle: 'short', timeStyle: 'short' })}
                   </td>
-                  <td className="px-5 py-3">
+                  <td className="px-3 md:px-5 py-3">
                     <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium ${
                       isError
                         ? 'bg-[#f8514920] text-[#f85149]'
@@ -55,11 +55,11 @@ export default async function LogsPage() {
                       {row.status as string}
                     </span>
                   </td>
-                  <td className="px-5 py-3 text-[#8b949e]">{toolTrace.length}</td>
-                  <td className="px-5 py-3 text-[#8b949e]">{Number(row.items_flagged ?? 0)}</td>
-                  <td className="px-5 py-3 text-right">
-                    <Link href={`/runs/${row.id as string}`} className="text-[#58a6ff] hover:underline text-[12px]">
-                      View trace →
+                  <td className="px-3 md:px-5 py-3 text-[#8b949e] hidden sm:table-cell">{toolTrace.length}</td>
+                  <td className="px-3 md:px-5 py-3 text-[#8b949e] hidden sm:table-cell">{Number(row.items_flagged ?? 0)}</td>
+                  <td className="px-3 md:px-5 py-3 text-right">
+                    <Link href={`/runs/${row.id as string}`} className="text-[#58a6ff] hover:underline text-[12px] whitespace-nowrap">
+                      View →
                     </Link>
                   </td>
                 </tr>
