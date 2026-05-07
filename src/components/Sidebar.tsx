@@ -1,10 +1,11 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Package, FileText, BarChart2,
-  Inbox, Globe, Brain, Settings, Zap, Camera,
+  Inbox, Globe, Brain, Settings, Camera,
 } from 'lucide-react'
 
 const nav = [
@@ -24,11 +25,13 @@ export function Sidebar() {
   return (
     <aside className="w-52 min-h-screen bg-[#0d1117] border-r border-[#21262d] flex flex-col shrink-0">
       <div className="px-4 py-5 border-b border-[#21262d]">
-        <div className="flex items-center gap-2">
-          <Zap size={16} className="text-[#58a6ff]" />
-          <span className="font-semibold text-white text-sm tracking-wide">Polaris</span>
+        <div className="flex items-center gap-2.5">
+          <Image src="/polaris-logo.png" alt="Polaris" width={32} height={32} className="rounded-md shrink-0" />
+          <div>
+            <span className="font-semibold text-white text-sm tracking-wide block leading-none">Polaris</span>
+            <span className="text-[10px] text-[#484f58] leading-none">Inventory Intelligence</span>
+          </div>
         </div>
-        <div className="text-[10px] text-[#484f58] mt-0.5 pl-6">Inventory Intelligence</div>
       </div>
       <nav className="flex-1 p-2 space-y-0.5">
         {nav.map(({ href, icon: Icon, label }) => {

@@ -2,6 +2,7 @@ import { sql } from '@/lib/db'
 import { computeDaysToExpiry } from '@/lib/agent/snapshot'
 import { RunAgentButton } from '@/components/RunAgentButton'
 import Link from 'next/link'
+import Image from 'next/image'
 import { AlertTriangle, TrendingDown, Activity, Wrench, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -57,16 +58,27 @@ export default async function OverviewPage() {
 
   return (
     <div className="space-y-6 max-w-[1200px]">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-[22px] font-semibold text-white">Overview</h1>
-          <p className="text-[13px] text-[#8b949e] mt-0.5">
-            {runs[0]
-              ? `Last run ${new Date(runs[0].ran_at).toLocaleString('en-AU', { timeZone: 'Australia/Sydney', dateStyle: 'short', timeStyle: 'short' })} AEST`
-              : 'No runs yet'}
-          </p>
+      {/* Hero header — logo embedded as background element */}
+      <div className="relative overflow-hidden rounded-xl bg-[#0d1117] border border-[#21262d] px-7 py-6">
+        <div className="relative z-10 flex items-end justify-between">
+          <div>
+            <h1 className="text-[22px] font-semibold text-white">Overview</h1>
+            <p className="text-[13px] text-[#8b949e] mt-0.5">
+              {runs[0]
+                ? `Last run ${new Date(runs[0].ran_at).toLocaleString('en-AU', { timeZone: 'Australia/Sydney', dateStyle: 'short', timeStyle: 'short' })} AEST`
+                : 'No runs yet'}
+            </p>
+          </div>
+          <RunAgentButton />
         </div>
-        <RunAgentButton />
+        <Image
+          src="/polaris-logo.png"
+          alt=""
+          width={200}
+          height={200}
+          className="absolute -right-4 -top-8 opacity-[0.22] pointer-events-none select-none"
+          aria-hidden
+        />
       </div>
 
       {/* Stat cards */}

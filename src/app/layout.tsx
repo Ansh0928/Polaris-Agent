@@ -8,6 +8,11 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'Polaris — Inventory Intelligence',
   description: 'Autonomous AI agent for fresh food warehouse inventory',
+  icons: {
+    icon: '/polaris-logo.png',
+    shortcut: '/polaris-logo.png',
+    apple: '/polaris-logo.png',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
