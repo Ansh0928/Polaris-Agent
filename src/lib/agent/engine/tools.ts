@@ -101,7 +101,7 @@ export const TOOL_DEFINITIONS: OpenAI.Chat.ChatCompletionTool[] = [
       parameters: {
         type: 'object',
         properties: {
-          product_id: { type: 'string', description: 'UUID of the product to order' },
+          product_id: { type: 'string', description: 'UUID of the product to order. Must be the exact `product.id` value returned by check_inventory — do not invent or guess this value.' },
           supplier: { type: 'string', description: 'Supplier name (e.g. pfdfoodservice.com.au)' },
           qty: { type: 'number', description: 'Quantity to order (in product units)' },
           reason: { type: 'string', description: 'Why this order is being created — included in approval email' },
@@ -201,8 +201,12 @@ export async function executeTool(
       const pricePerUnit = args.price_per_unit_aud != null ? Number(args.price_per_unit_aud) : null
       const runId = context?.runId ?? null
 
-      if (!productId || !supplier || qty <= 0) {
-        return JSON.stringify({ error: 'create_purchase_order: product_id, supplier, and qty > 0 are required' })
+      const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      if (!productId || !UUID_RE.test(productId)) {
+        return JSON.stringify({ error: 'create_purchase_order: product_id must be a valid UUID from check_inventory output — call check_inventory first and use the product.id field' })
+      }
+      if (!supplier || qty <= 0) {
+        return JSON.stringify({ error: 'create_purchase_order: supplier and qty > 0 are required' })
       }
 
       const rows = await sql`
