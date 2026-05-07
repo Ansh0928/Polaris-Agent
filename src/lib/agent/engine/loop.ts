@@ -35,7 +35,7 @@ export interface ToolCallRecord {
 }
 
 export interface ToolCallEvent {
-  type: 'tool_start' | 'tool_done' | 'reasoning' | 'done' | 'error'
+  type: 'tool_start' | 'tool_done' | 'reasoning' | 'done' | 'error' | 'email_sent'
   tool?: string
   args?: Record<string, unknown>
   output?: string
