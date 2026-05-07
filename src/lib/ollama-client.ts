@@ -73,7 +73,7 @@ function fromOllamaResponse(data: OllamaResponse) {
 
 export async function checkOllamaHealth(llmBaseUrl: string): Promise<boolean> {
   try {
-    const base = llmBaseUrl.replace(/\/v1\/?$/, '')
+    const base = llmBaseUrl.trim().replace(/\/v1\/?$/, '')
     const res = await fetch(`${base}/api/tags`, { signal: AbortSignal.timeout(5000) })
     return res.ok
   } catch {
@@ -135,7 +135,7 @@ export async function createClientForRun(llmBaseUrl: string) {
 }
 
 export function createOllamaClient(llmBaseUrl: string) {
-  const ollamaBase = llmBaseUrl.replace(/\/v1\/?$/, '')
+  const ollamaBase = llmBaseUrl.trim().replace(/\/v1\/?$/, '')
 
   const create = async (params: {
     model: string
