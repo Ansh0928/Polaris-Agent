@@ -47,8 +47,6 @@ async function runFull() {
 // Incremental (production-safe -- only runs new migrations)
 async function runIncremental() {
   const newMigrations = [
-    '005_competitor_sources.sql',
-    '006_scanner.sql',
     '007_purchase_orders.sql',
     '008_decision_log.sql',
     '009_agent_runs_partial.sql',
