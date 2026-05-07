@@ -1,15 +1,12 @@
-import OpenAI from 'openai'
 import type { FlaggedItem, SupplierResult, WebsitePrice, InventoryWithProduct, ToolTrace, ReasoningBlock } from '@/types'
 import { TOOL_DEFINITIONS, executeTool } from './tools'
 import { loadMemory } from './memory'
 import { loadSkills } from './skills'
+import { createOllamaClient, type OpenAIStyleMessage } from '@/lib/ollama-client'
 
-const client = new OpenAI({
-  baseURL: process.env.LLM_BASE_URL ?? 'http://localhost:11434/v1',
-  apiKey: process.env.OPENROUTER_API_KEY ?? 'ollama',
-})
+const client = createOllamaClient(process.env.LLM_BASE_URL ?? 'http://localhost:11434/v1')
 
-const MODEL = process.env.LLM_MODEL ?? 'gemma3:27b'
+const MODEL = process.env.LLM_MODEL ?? 'qwen3:14b'
 const MAX_ITERATIONS = 12
 
 function extractThinkBlocks(text: string): string[] {
@@ -72,13 +69,15 @@ export async function runAgentLoop(
     'Use the available tools to gather data before synthesising recommendations.',
     'Be specific — include product names, quantities (with units), and AUD prices.',
     'After gathering data, save any useful observations via write_memory.',
+    'IMPORTANT: Never call the same tool twice. Each tool provides complete data in one call.',
+    'Workflow: check_inventory → flag_alerts → fetch_supplier_prices → check_website_prices → write_memory → respond.',
     memory,
     skills,
   ]
     .filter(Boolean)
     .join('\n')
 
-  const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+  const messages: OpenAIStyleMessage[] = [
     { role: 'system', content: systemPrompt },
     { role: 'user', content: userMessage },
   ]
@@ -115,7 +114,7 @@ export async function runAgentLoop(
       }
     }
 
-    messages.push(msg as OpenAI.Chat.ChatCompletionMessageParam)
+    messages.push(msg as OpenAIStyleMessage)
 
     if (!msg.tool_calls?.length) {
       const response_text = stripThinkBlocks(msg.content ?? '')
@@ -150,7 +149,7 @@ export async function runAgentLoop(
     }
 
     // Execute each tool call and collect results
-    const toolResults: OpenAI.Chat.ChatCompletionToolMessageParam[] = []
+    const toolResults: OpenAIStyleMessage[] = []
 
     for (const tc of msg.tool_calls) {
       let args: Record<string, unknown> = {}
@@ -186,16 +185,32 @@ export async function runAgentLoop(
       })
     }
 
-    messages.push(...(toolResults as OpenAI.Chat.ChatCompletionMessageParam[]))
+    messages.push(...toolResults)
   }
+
+  const flagged = allToolCalls
+    .filter((tc) => tc.name === 'flag_alerts')
+    .flatMap((tc) => { try { return JSON.parse(tc.result) as FlaggedItem[] } catch { return [] } })
+
+  const allInventory = allToolCalls
+    .filter((tc) => tc.name === 'check_inventory')
+    .flatMap((tc) => { try { return JSON.parse(tc.result) as InventoryWithProduct[] } catch { return [] } })
+
+  const supplierPrices = allToolCalls
+    .filter((tc) => tc.name === 'fetch_supplier_prices')
+    .flatMap((tc) => { try { return JSON.parse(tc.result) as SupplierResult[] } catch { return [] } })
+
+  const websitePrices = allToolCalls
+    .filter((tc) => tc.name === 'check_website_prices')
+    .flatMap((tc) => { try { return JSON.parse(tc.result) as WebsitePrice[] } catch { return [] } })
 
   return {
     response: 'Max iterations reached without final response.',
     toolCalls: allToolCalls,
-    flagged: [],
-    allInventory: [],
-    supplierPrices: [],
-    websitePrices: [],
+    flagged,
+    allInventory,
+    supplierPrices,
+    websitePrices,
     toolTrace,
     reasoningBlocks,
     iterations,

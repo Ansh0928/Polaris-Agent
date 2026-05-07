@@ -4,12 +4,13 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Package, FileText, BarChart2,
-  Inbox, Globe, Brain, Settings, Zap,
+  Inbox, Globe, Brain, Settings, Zap, Camera,
 } from 'lucide-react'
 
 const nav = [
   { href: '/', icon: LayoutDashboard, label: 'Overview' },
   { href: '/inventory', icon: Package, label: 'Inventory' },
+  { href: '/scanner', icon: Camera, label: 'Scanner' },
   { href: '/runs', icon: FileText, label: 'Logs' },
   { href: '/monitor', icon: BarChart2, label: 'Monitor' },
   { href: '/putaway', icon: Inbox, label: 'Put Away' },
