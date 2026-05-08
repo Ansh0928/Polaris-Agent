@@ -27,7 +27,7 @@ const ENV_GROUPS: Array<{
     vars: [
       { key: 'RESEND_API_KEY', label: 'Resend API Key', masked: true },
       { key: 'RESEND_FROM', label: 'Sender Address', masked: false },
-      { key: 'ADMIN_EMAIL', label: 'Report Recipient', masked: false },
+      { key: 'ADMIN_EMAIL', label: 'Report Recipient', masked: true },
     ],
   },
   {

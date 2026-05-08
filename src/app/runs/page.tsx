@@ -1,6 +1,7 @@
 import { sql } from '@/lib/db'
 import Link from 'next/link'
 import { CheckCircle, XCircle } from 'lucide-react'
+import { RunsAutoRefresh } from '@/components/RunsAutoRefresh'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,8 +15,11 @@ export default async function LogsPage() {
     ORDER BY ran_at DESC LIMIT 50
   `
 
+  const hasRunning = rows.some((r) => r.status === 'running')
+
   return (
     <div className="space-y-5 max-w-[900px]">
+      <RunsAutoRefresh hasRunning={hasRunning} />
       <h1 className="text-[22px] font-semibold text-white">Logs</h1>
 
       <div className="bg-[#0d1117] border border-[#21262d] rounded-lg overflow-hidden">

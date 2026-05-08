@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { ArrowLeft, CheckCircle, XCircle, Clock, Zap } from 'lucide-react'
 import Link from 'next/link'
 import type { AgentRun, AgentReport, ToolTrace, ReasoningBlock } from '@/types'
+import { RunDetailAutoRefresh } from '@/components/RunDetailAutoRefresh'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,6 +30,7 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="space-y-6 max-w-[860px]">
+      <RunDetailAutoRefresh isRunning={run.status === 'running'} />
       <div className="flex items-center gap-3">
         <Link href="/runs" className="text-[#8b949e] hover:text-white transition-colors">
           <ArrowLeft size={16} />

@@ -14,9 +14,9 @@ export default function SettingsGeneralPage() {
           {[
             { label: 'Name', value: 'Polaris' },
             { label: 'Description', value: 'Autonomous AI agent for fresh food warehouse inventory' },
-            { label: 'Framework', value: 'Next.js 16.2.4 (App Router)' },
+            { label: 'Framework', value: 'Next.js (App Router)' },
             { label: 'Deployment', value: 'Vercel' },
-            { label: 'Repository', value: 'github.com/tasmanstar/polaris' },
+            { label: 'Repository', value: 'github.com/Ansh0928/Polaris-Agent' },
           ].map(({ label, value }) => (
             <div key={label} className="px-5 py-3.5 flex items-center justify-between">
               <span className="text-[13px] text-[#8b949e]">{label}</span>
