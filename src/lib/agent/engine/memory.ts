@@ -11,11 +11,15 @@ export async function loadMemory(): Promise<string> {
   return `\n\n## Agent Memory (persisted from previous runs)\n\n${entries}`
 }
 
-export async function writeMemory(key: string, value: string): Promise<void> {
+export async function writeMemory(key: string, value: string, runId?: string | null): Promise<void> {
   await sql`
     INSERT INTO agent_memory (key, value, updated_at)
     VALUES (${key}, ${value}, now())
     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()
+  `
+  await sql`
+    INSERT INTO agent_memory_history (key, value, run_id)
+    VALUES (${key}, ${value}, ${runId ?? null}::uuid)
   `
 }
 

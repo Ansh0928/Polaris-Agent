@@ -34,6 +34,7 @@ async function runFull() {
     '007_purchase_orders.sql',
     '008_decision_log.sql',
     '009_agent_runs_partial.sql',
+    '010_memory_history.sql',
   ]
 
   for (const file of migrations) {
@@ -47,9 +48,7 @@ async function runFull() {
 // Incremental (production-safe -- only runs new migrations)
 async function runIncremental() {
   const newMigrations = [
-    '007_purchase_orders.sql',
-    '008_decision_log.sql',
-    '009_agent_runs_partial.sql',
+    '010_memory_history.sql',
   ]
 
   for (const file of newMigrations) {

@@ -174,7 +174,7 @@ export async function executeTool(
     case 'write_memory': {
       const key = String(args.key ?? '')
       const value = String(args.value ?? '')
-      await writeMemory(key, value)
+      await writeMemory(key, value, context?.runId)
       return JSON.stringify({ ok: true, key })
     }
 
