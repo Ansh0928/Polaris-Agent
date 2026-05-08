@@ -2,7 +2,7 @@ import type { FlaggedItem, SupplierResult, WebsitePrice, InventoryWithProduct, T
 import { TOOL_DEFINITIONS, executeTool } from './tools'
 import { loadMemory } from './memory'
 import { loadSkills } from './skills'
-import { createClientForRun, type OpenAIStyleMessage } from '@/lib/ollama-client'
+import { createClientForRun, createGroqClient, type OpenAIStyleMessage } from '@/lib/ollama-client'
 import { saveCheckpoint } from './checkpoint'
 import { withRetry } from './retry'
 
@@ -110,19 +110,38 @@ export async function runAgentLoop(
   const calledTools = new Set<string>()
   let iterations = 0
 
+  // Create client once — health check happens here, not per-iteration
+  let client = await createClientForRun(llmBaseUrl)
+
   while (iterations < MAX_ITERATIONS) {
     iterations++
 
-    const response = await withRetry(async () => {
-      const client = await createClientForRun(llmBaseUrl)
-      return client.chat.completions.create({
+    let response: Awaited<ReturnType<typeof client.chat.completions.create>>
+    try {
+      response = await client.chat.completions.create({
         model: MODEL,
         messages,
         tools: TOOL_DEFINITIONS,
         tool_choice: 'auto',
         temperature: 0.2,
       })
-    }, 3, 1000)
+    } catch (err) {
+      // Ollama timed out mid-run — switch to Groq for this and remaining calls
+      const isTimeout = err instanceof Error && (err.name === 'TimeoutError' || err.message.toLowerCase().includes('timeout'))
+      if (isTimeout && process.env.GROQ_API_KEY) {
+        console.log('[loop] Ollama call timed out — switching to Groq for remaining iterations')
+        client = createGroqClient()
+        response = await client.chat.completions.create({
+          model: MODEL,
+          messages,
+          tools: TOOL_DEFINITIONS,
+          tool_choice: 'auto',
+          temperature: 0.2,
+        })
+      } else {
+        throw err
+      }
+    }
 
     if (!response.choices?.length) {
       console.error('[loop] LLM empty choices:', JSON.stringify(response))
