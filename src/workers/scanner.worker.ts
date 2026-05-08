@@ -10,18 +10,29 @@ env.wasm.wasmPaths = `https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/`
 env.wasm.numThreads = 1
 
 let session: InferenceSession | null = null
+let isRunning = false
 
 async function loadModel(): Promise<void> {
   self.postMessage({ type: 'status', status: 'loading' })
   try {
     const cache = await caches.open(CACHE_NAME)
-    let response = await cache.match(MODEL_URL)
-    if (!response) {
-      response = await fetch(MODEL_URL)
-      if (!response.ok) throw new Error(`Model fetch failed: ${response.status}`)
-      await cache.put(MODEL_URL, response.clone())
+    let cachedResponse = await cache.match(MODEL_URL)
+    let buffer: ArrayBuffer
+    if (cachedResponse) {
+      buffer = await cachedResponse.arrayBuffer()
+    } else {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 30_000)
+      let response: Response
+      try {
+        response = await fetch(MODEL_URL, { signal: controller.signal })
+        if (!response.ok) throw new Error(`Model fetch failed: ${response.status}`)
+      } finally {
+        clearTimeout(timeoutId)
+      }
+      buffer = await response.arrayBuffer()
+      await cache.put(MODEL_URL, new Response(buffer, { headers: { 'Content-Type': 'application/octet-stream' } }))
     }
-    const buffer = await response.arrayBuffer()
     session = await InferenceSession.create(buffer, {
       executionProviders: ['wasm'],
       graphOptimizationLevel: 'all',
@@ -72,7 +83,9 @@ self.onmessage = async (e: MessageEvent) => {
     self.postMessage({ type: 'error', message: 'Model not loaded yet' })
     return
   }
+  if (isRunning) return
 
+  isRunning = true
   try {
     const { tensor, scale, px, py } = preprocess(
       new Uint8ClampedArray(pixels),
@@ -88,7 +101,11 @@ self.onmessage = async (e: MessageEvent) => {
     self.postMessage({ type: 'result', count: objects.length, objects })
   } catch (err) {
     self.postMessage({ type: 'error', message: String(err) })
+  } finally {
+    isRunning = false
   }
 }
 
-loadModel()
+loadModel().catch((err) => {
+  self.postMessage({ type: 'status', status: 'error', message: String(err) })
+})
