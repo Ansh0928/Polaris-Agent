@@ -126,10 +126,14 @@ export async function runAgentLoop(
         temperature: 0.2,
       })
     } catch (err) {
-      // Ollama timed out mid-run — switch to Groq for this and remaining calls
-      const isTimeout = err instanceof Error && (err.name === 'TimeoutError' || err.message.toLowerCase().includes('timeout'))
-      if (isTimeout && process.env.GROQ_API_KEY) {
-        console.log('[loop] Ollama call timed out — switching to Groq for remaining iterations')
+      // Ollama unreachable (timeout, 502, tunnel drop) — switch to Groq for this and remaining calls
+      const isOllamaFailure = err instanceof Error && (
+        err.name === 'TimeoutError' ||
+        err.message.toLowerCase().includes('timeout') ||
+        err.message.startsWith('Ollama ')
+      )
+      if (isOllamaFailure && process.env.GROQ_API_KEY) {
+        console.log(`[loop] Ollama call failed (${(err as Error).message.slice(0, 80)}) — switching to Groq for remaining iterations`)
         client = createGroqClient()
         response = await client.chat.completions.create({
           model: MODEL,
