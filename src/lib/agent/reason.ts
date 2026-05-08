@@ -115,12 +115,12 @@ Return a JSON object with this exact structure:
       err.message.startsWith('Ollama ')
     )
     if (isOllamaFailure && ((process.env.GROQ_API_KEY ?? '').trim() || process.env.OPENROUTER_API_KEY)) {
-      if (process.env.OPENROUTER_API_KEY) {
-        console.log(`[reason] Ollama failed (${(err as Error).message.slice(0, 80)}) — falling back to OpenRouter (qwen3-235b)`)
-        client = createOpenRouterClient()
-      } else {
+      if ((process.env.GROQ_API_KEY ?? '').trim()) {
         console.log(`[reason] Ollama failed (${(err as Error).message.slice(0, 80)}) — falling back to Groq`)
         client = createGroqClient()
+      } else {
+        console.log(`[reason] Ollama failed (${(err as Error).message.slice(0, 80)}) — falling back to OpenRouter`)
+        client = createOpenRouterClient()
       }
       response = await client.chat.completions.create({
         model,

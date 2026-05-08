@@ -149,16 +149,16 @@ export async function createClientForRun(llmBaseUrl: string) {
   const healthy = await checkOllamaHealth(llmBaseUrl)
   if (healthy) return createOllamaClient(llmBaseUrl)
 
-  // OpenRouter first: Qwen3-235B is the same model family as local Qwen3:14b but 235B
-  if (process.env.OPENROUTER_API_KEY) {
-    console.log('[loop] Ollama unreachable — routing to OpenRouter (qwen3-235b)')
-    return createOpenRouterClient()
+  // Groq: reliable infrastructure, 70B model, free tier
+  if ((process.env.GROQ_API_KEY ?? '').trim()) {
+    console.log('[loop] Ollama unreachable — routing to Groq (llama-3.3-70b-versatile)')
+    return createGroqClient()
   }
 
-  // Groq as reliable backup
-  if ((process.env.GROQ_API_KEY ?? '').trim()) {
-    console.log('[loop] OpenRouter unavailable — routing to Groq backup')
-    return createGroqClient()
+  // OpenRouter as last-resort backup
+  if (process.env.OPENROUTER_API_KEY) {
+    console.log('[loop] Groq unavailable — routing to OpenRouter backup')
+    return createOpenRouterClient()
   }
 
   throw new Error('No LLM available: Ollama unreachable and no fallback API keys configured')

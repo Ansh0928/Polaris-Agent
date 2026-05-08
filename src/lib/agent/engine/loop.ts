@@ -133,12 +133,12 @@ export async function runAgentLoop(
         err.message.startsWith('Ollama ')
       )
       if (isOllamaFailure && ((process.env.GROQ_API_KEY ?? '').trim() || process.env.OPENROUTER_API_KEY)) {
-        if (process.env.OPENROUTER_API_KEY) {
-          console.log(`[loop] Ollama call failed (${(err as Error).message.slice(0, 80)}) — switching to OpenRouter for remaining iterations`)
-          client = createOpenRouterClient()
-        } else {
+        if ((process.env.GROQ_API_KEY ?? '').trim()) {
           console.log(`[loop] Ollama call failed (${(err as Error).message.slice(0, 80)}) — switching to Groq for remaining iterations`)
           client = createGroqClient()
+        } else {
+          console.log(`[loop] Ollama call failed (${(err as Error).message.slice(0, 80)}) — switching to OpenRouter for remaining iterations`)
+          client = createOpenRouterClient()
         }
         response = await client.chat.completions.create({
           model: MODEL,
