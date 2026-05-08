@@ -5,7 +5,7 @@ import { Play, Loader2, CheckCircle, XCircle, X, Zap } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 interface StreamEvent {
-  type: 'tool_start' | 'tool_done' | 'reasoning' | 'done' | 'error' | 'email_sent'
+  type: 'tool_start' | 'tool_done' | 'reasoning' | 'loop_done' | 'done' | 'error' | 'email_sent'
   tool?: string
   args?: Record<string, unknown>
   output?: string
@@ -23,6 +23,7 @@ interface ToolCall {
 export function RunAgentButton() {
   const [open, setOpen] = useState(false)
   const [running, setRunning] = useState(false)
+  const [synthesizing, setSynthesizing] = useState(false)
   const [finished, setFinished] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [toolCalls, setToolCalls] = useState<ToolCall[]>([])
@@ -40,6 +41,7 @@ export function RunAgentButton() {
   function reset() {
     setOpen(false)
     setRunning(false)
+    setSynthesizing(false)
     setFinished(false)
     setError(null)
     setToolCalls([])
@@ -50,6 +52,7 @@ export function RunAgentButton() {
   async function handleRun() {
     setOpen(true)
     setRunning(true)
+    setSynthesizing(false)
     setFinished(false)
     setError(null)
     setToolCalls([])
@@ -94,12 +97,16 @@ export function RunAgentButton() {
                     : tc
                 )
               )
+            } else if (evt.type === 'loop_done') {
+              setRunning(false)
+              setSynthesizing(true)
             } else if (evt.type === 'email_sent') {
               const to = evt.output || 'your inbox'
               setEmailToast(to)
               setTimeout(() => setEmailToast(null), 5000)
             } else if (evt.type === 'done') {
               setRunId(evt.output ?? null)
+              setSynthesizing(false)
               setFinished(true)
               setRunning(false)
               router.refresh()
@@ -154,6 +161,12 @@ export function RunAgentButton() {
                 <div className="flex items-center gap-2 text-[12px] text-[#484f58] py-2">
                   <Loader2 size={12} className="animate-spin" />
                   Starting agent loop...
+                </div>
+              )}
+              {synthesizing && (
+                <div className="flex items-center gap-2 text-[12px] text-[#58a6ff] py-2">
+                  <Loader2 size={12} className="animate-spin" />
+                  Synthesising report...
                 </div>
               )}
               {toolCalls.map((tc, i) => (

@@ -138,10 +138,10 @@ export function createOpenRouterClient() {
 export function createGroqClient() {
   return makeOpenAICompatClient(
     'https://api.groq.com/openai/v1/chat/completions',
-    process.env.GROQ_API_KEY ?? '',
-    process.env.CLOUD_FALLBACK_MODEL ?? 'llama-3.3-70b-versatile',
+    (process.env.GROQ_API_KEY ?? '').trim(),
+    (process.env.CLOUD_FALLBACK_MODEL ?? 'llama-3.3-70b-versatile').trim(),
     'Groq',
-    22_000,
+    60_000,
   )
 }
 
@@ -181,7 +181,7 @@ export function createOllamaClient(llmBaseUrl: string) {
       think: false,
       stream: false,
       messages: toOllamaMessages(params.messages),
-      options: { temperature: params.temperature ?? 0.2, num_predict: params.max_tokens ?? 700 },
+      options: { temperature: params.temperature ?? 0.2, num_predict: params.max_tokens ?? 300 },
     }
 
     if (params.tools && (params.tools as unknown[]).length > 0) {
@@ -196,7 +196,7 @@ export function createOllamaClient(llmBaseUrl: string) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(180_000),
+      signal: AbortSignal.timeout(55_000),
     })
 
     if (!response.ok) {

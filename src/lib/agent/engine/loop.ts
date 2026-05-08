@@ -2,12 +2,12 @@ import type { FlaggedItem, SupplierResult, WebsitePrice, InventoryWithProduct, T
 import { TOOL_DEFINITIONS, executeTool } from './tools'
 import { loadMemory } from './memory'
 import { loadSkills } from './skills'
-import { createClientForRun, type OpenAIStyleMessage } from '@/lib/ollama-client'
+import { createClientForRun, createGroqClient, type OpenAIStyleMessage } from '@/lib/ollama-client'
 import { saveCheckpoint } from './checkpoint'
 import { withRetry } from './retry'
 
-const MODEL = process.env.LLM_MODEL ?? 'qwen3:14b'
-const MAX_ITERATIONS = 12
+const MODEL = (process.env.LLM_MODEL ?? 'qwen3:14b').trim()
+const MAX_ITERATIONS = 7
 
 function extractThinkBlocks(text: string): string[] {
   const blocks: string[] = []
@@ -35,7 +35,7 @@ export interface ToolCallRecord {
 }
 
 export interface ToolCallEvent {
-  type: 'tool_start' | 'tool_done' | 'reasoning' | 'done' | 'error' | 'email_sent'
+  type: 'tool_start' | 'tool_done' | 'reasoning' | 'loop_done' | 'done' | 'error' | 'email_sent'
   tool?: string
   args?: Record<string, unknown>
   output?: string
@@ -83,7 +83,7 @@ export async function runAgentLoop(
 ): Promise<LoopResult> {
   const [memory, skills] = await Promise.all([loadMemory(), Promise.resolve(loadSkills())])
 
-  const llmBaseUrl = process.env.LLM_BASE_URL ?? 'http://localhost:11434/v1'
+  const llmBaseUrl = (process.env.LLM_BASE_URL ?? 'http://localhost:11434/v1').trim()
 
   const systemPrompt = [
     'You are Polaris, an autonomous fresh food warehouse inventory management agent.',
@@ -110,19 +110,42 @@ export async function runAgentLoop(
   const calledTools = new Set<string>()
   let iterations = 0
 
+  // Create client once — health check happens here, not per-iteration
+  let client = await createClientForRun(llmBaseUrl)
+
   while (iterations < MAX_ITERATIONS) {
     iterations++
 
-    const response = await withRetry(async () => {
-      const client = await createClientForRun(llmBaseUrl)
-      return client.chat.completions.create({
+    let response: Awaited<ReturnType<typeof client.chat.completions.create>>
+    try {
+      response = await client.chat.completions.create({
         model: MODEL,
         messages,
         tools: TOOL_DEFINITIONS,
         tool_choice: 'auto',
         temperature: 0.2,
       })
-    }, 3, 1000)
+    } catch (err) {
+      // Ollama unreachable (timeout, 502, tunnel drop) — switch to Groq for this and remaining calls
+      const isOllamaFailure = err instanceof Error && (
+        err.name === 'TimeoutError' ||
+        err.message.toLowerCase().includes('timeout') ||
+        err.message.startsWith('Ollama ')
+      )
+      if (isOllamaFailure && process.env.GROQ_API_KEY) {
+        console.log(`[loop] Ollama call failed (${(err as Error).message.slice(0, 80)}) — switching to Groq for remaining iterations`)
+        client = createGroqClient()
+        response = await client.chat.completions.create({
+          model: MODEL,
+          messages,
+          tools: TOOL_DEFINITIONS,
+          tool_choice: 'auto',
+          temperature: 0.2,
+        })
+      } else {
+        throw err
+      }
+    }
 
     if (!response.choices?.length) {
       console.error('[loop] LLM empty choices:', JSON.stringify(response))
@@ -142,7 +165,7 @@ export async function runAgentLoop(
 
     if (!msg.tool_calls?.length) {
       const response_text = stripThinkBlocks(msg.content ?? '')
-      onEvent?.({ type: 'done', iteration: iterations })
+      onEvent?.({ type: 'loop_done', iteration: iterations })
       return { response: response_text, toolCalls: allToolCalls, ...extractLoopData(allToolCalls), toolTrace, reasoningBlocks, iterations }
     }
 
@@ -255,7 +278,7 @@ export async function runAgentLoop(
   }
 
   const loopData = extractLoopData(allToolCalls)
-  onEvent?.({ type: 'done', iteration: iterations })
+  onEvent?.({ type: 'loop_done', iteration: iterations })
   return {
     response: `Analysis reached max iterations (${MAX_ITERATIONS}). Collected: ${allToolCalls.length} tool calls, ${loopData.flagged.length} flagged items.`,
     toolCalls: allToolCalls,
