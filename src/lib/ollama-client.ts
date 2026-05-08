@@ -139,7 +139,7 @@ export function createOpenRouterClient() {
   return makeOpenAICompatClient(
     'https://openrouter.ai/api/v1/chat/completions',
     process.env.OPENROUTER_API_KEY ?? '',
-    (process.env.OPENROUTER_MODEL ?? 'qwen/qwen3-235b-a22b:free').trim(),
+    (process.env.OPENROUTER_MODEL ?? 'qwen/qwen3-next-80b-a3b-instruct:free').trim(),
     'OpenRouter',
     90_000,
   )
