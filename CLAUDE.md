@@ -69,6 +69,21 @@ src/lib/agent/
   reason.ts     reasonWithHermes() — second Hermes call for structured AgentReport JSON
   email.ts      buildEmailHtml() + sendDailyEmail() via Resend
 
+src/workers/
+  scanner.worker.ts   Browser Web Worker — loads YOLOv8n ONNX (cached via Cache API), runs inference, postMessages results
+
+src/lib/scanner/
+  inference.ts        postprocess(), nms(), computeIoU(), COCO_CLASSES — pure functions, testable in Vitest
+  db.ts               Zone/scan/detection DB queries
+  diff.ts             computeChange() — count diff logic
+  types.ts            Zone, Scan, Detection, DetectResponse, ZoneWithStatus
+
+src/app/scanner/
+  page.tsx                Zone list page
+  [zoneId]/ScanView.tsx   Camera feed, worker messaging, server fallback, save snapshot
+  [zoneId]/page.tsx       Server component — fetches zone + last count
+  zones/new/page.tsx      Add zone form
+
 src/app/api/
   agent/run/route.ts    POST — triggers full pipeline (auth: Bearer AGENT_SECRET)
   inventory/route.ts    GET — current inventory snapshot
@@ -83,6 +98,14 @@ migrations/
   002_agent_memory.sql  agent_memory table (key PK, value, updated_at)
 
 skills/polaris-inventory/SKILL.md   Agent skill injected into system prompt
+```
+
+## Scanner Architecture
+
+```
+Phone camera → ScanView.tsx → Web Worker (YOLOv8n ONNX, browser, cached)
+                            → POST /api/scanner/scans (save to Neon)
+Fallback: Worker error → POST /api/scanner/detect → Render (Python FastAPI)
 ```
 
 ## Database

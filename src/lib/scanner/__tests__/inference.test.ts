@@ -72,4 +72,21 @@ describe('postprocess', () => {
     expect(result[0].bbox.x).toBeCloseTo(320, 1)
     expect(result[0].bbox.y).toBeCloseTo(240, 1)
   })
+
+  it('keeps both boxes when same position but different classes', () => {
+    const NUM_BOXES = 8400
+    const output = new Float32Array(84 * NUM_BOXES).fill(0)
+    // Box 0: class 0 (person), score 0.9
+    output[0 * NUM_BOXES + 0] = 320; output[1 * NUM_BOXES + 0] = 240
+    output[2 * NUM_BOXES + 0] = 100; output[3 * NUM_BOXES + 0] = 100
+    output[4 * NUM_BOXES + 0] = 0.9
+    // Box 1: class 1 (bicycle), same position, score 0.8
+    output[0 * NUM_BOXES + 1] = 320; output[1 * NUM_BOXES + 1] = 240
+    output[2 * NUM_BOXES + 1] = 100; output[3 * NUM_BOXES + 1] = 100
+    output[5 * NUM_BOXES + 1] = 0.8
+    const result = postprocess(output, 1.0, 0, 0)
+    expect(result).toHaveLength(2)
+    expect(result.map(r => r.class)).toContain('person')
+    expect(result.map(r => r.class)).toContain('bicycle')
+  })
 })

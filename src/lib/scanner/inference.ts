@@ -18,6 +18,7 @@ export const COCO_CLASSES = [
   'toothbrush',
 ]
 
+/** bbox uses center-point coordinates (x,y = cx,cy), not top-left */
 export interface DetectObject {
   class: string
   confidence: number
@@ -97,7 +98,20 @@ export function postprocess(
     })
   }
 
-  return nms(candidates, IOU_THRESHOLD).map((b) => ({
+  // Apply NMS per class to avoid cross-class suppression
+  const byClass = new Map<number, RawBox[]>()
+  for (const box of candidates) {
+    const list = byClass.get(box.cls) ?? []
+    list.push(box)
+    byClass.set(box.cls, list)
+  }
+
+  const kept: RawBox[] = []
+  for (const boxes of byClass.values()) {
+    kept.push(...nms(boxes, IOU_THRESHOLD))
+  }
+
+  return kept.map((b) => ({
     class: COCO_CLASSES[b.cls] ?? String(b.cls),
     confidence: Math.round(b.score * 1000) / 1000,
     bbox: {
