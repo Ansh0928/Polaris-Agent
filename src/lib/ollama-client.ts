@@ -125,22 +125,22 @@ function makeOpenAICompatClient(
   return { chat: { completions: { create } } }
 }
 
-export function createOpenRouterClient() {
-  return makeOpenAICompatClient(
-    'https://openrouter.ai/api/v1/chat/completions',
-    process.env.OPENROUTER_API_KEY ?? '',
-    process.env.OPENROUTER_MODEL ?? 'openai/gpt-oss-20b:free',
-    'OpenRouter',
-    60_000,
-  )
-}
-
 export function createGroqClient() {
   return makeOpenAICompatClient(
     'https://api.groq.com/openai/v1/chat/completions',
     (process.env.GROQ_API_KEY ?? '').trim(),
-    (process.env.CLOUD_FALLBACK_MODEL ?? 'llama-3.3-70b-versatile').trim(),
+    (process.env.GROQ_MODEL ?? 'llama-3.1-8b-instant').trim(),
     'Groq',
+    60_000,
+  )
+}
+
+export function createOpenRouterClient() {
+  return makeOpenAICompatClient(
+    'https://openrouter.ai/api/v1/chat/completions',
+    process.env.OPENROUTER_API_KEY ?? '',
+    (process.env.OPENROUTER_MODEL ?? 'meta-llama/llama-3.1-8b-instruct:free').trim(),
+    'OpenRouter',
     60_000,
   )
 }
@@ -149,14 +149,16 @@ export async function createClientForRun(llmBaseUrl: string) {
   const healthy = await checkOllamaHealth(llmBaseUrl)
   if (healthy) return createOllamaClient(llmBaseUrl)
 
-  if (process.env.OPENROUTER_API_KEY) {
-    console.log('[loop] Ollama unreachable — routing to OpenRouter fallback')
-    return createOpenRouterClient()
+  // Groq first: llama-3.1-8b-instant has 6000 RPM / 131K TPM — no practical rate limit
+  if ((process.env.GROQ_API_KEY ?? '').trim()) {
+    console.log('[loop] Ollama unreachable — routing to Groq (llama-3.1-8b-instant)')
+    return createGroqClient()
   }
 
-  if (process.env.GROQ_API_KEY) {
-    console.log('[loop] Ollama + OpenRouter unavailable — routing to Groq fallback')
-    return createGroqClient()
+  // OpenRouter as secondary fallback
+  if (process.env.OPENROUTER_API_KEY) {
+    console.log('[loop] Groq unavailable — routing to OpenRouter fallback')
+    return createOpenRouterClient()
   }
 
   throw new Error('No LLM available: Ollama unreachable and no fallback API keys configured')
