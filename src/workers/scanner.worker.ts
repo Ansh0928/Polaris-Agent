@@ -23,14 +23,13 @@ async function loadModel(): Promise<void> {
     } else {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 30_000)
-      let response: Response
       try {
-        response = await fetch(MODEL_URL, { signal: controller.signal })
+        const response = await fetch(MODEL_URL, { signal: controller.signal })
         if (!response.ok) throw new Error(`Model fetch failed: ${response.status}`)
+        buffer = await response.arrayBuffer()
       } finally {
         clearTimeout(timeoutId)
       }
-      buffer = await response.arrayBuffer()
       await cache.put(MODEL_URL, new Response(buffer, { headers: { 'Content-Type': 'application/octet-stream' } }))
     }
     session = await InferenceSession.create(buffer, {
