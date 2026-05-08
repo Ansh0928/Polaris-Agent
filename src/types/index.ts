@@ -30,7 +30,7 @@ export interface InventoryWithProduct extends Inventory {
 export interface AgentRun {
   id: string
   ran_at: string
-  status: 'success' | 'error'
+  status: 'success' | 'error' | 'running'
   report_json: AgentReport | null
   email_html: string | null
   error_message: string | null

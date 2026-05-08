@@ -35,7 +35,7 @@ export interface ToolCallRecord {
 }
 
 export interface ToolCallEvent {
-  type: 'tool_start' | 'tool_done' | 'reasoning' | 'done' | 'error' | 'email_sent'
+  type: 'tool_start' | 'tool_done' | 'reasoning' | 'loop_done' | 'done' | 'error' | 'email_sent'
   tool?: string
   args?: Record<string, unknown>
   output?: string
@@ -142,7 +142,7 @@ export async function runAgentLoop(
 
     if (!msg.tool_calls?.length) {
       const response_text = stripThinkBlocks(msg.content ?? '')
-      onEvent?.({ type: 'done', iteration: iterations })
+      onEvent?.({ type: 'loop_done', iteration: iterations })
       return { response: response_text, toolCalls: allToolCalls, ...extractLoopData(allToolCalls), toolTrace, reasoningBlocks, iterations }
     }
 
@@ -255,7 +255,7 @@ export async function runAgentLoop(
   }
 
   const loopData = extractLoopData(allToolCalls)
-  onEvent?.({ type: 'done', iteration: iterations })
+  onEvent?.({ type: 'loop_done', iteration: iterations })
   return {
     response: `Analysis reached max iterations (${MAX_ITERATIONS}). Collected: ${allToolCalls.length} tool calls, ${loopData.flagged.length} flagged items.`,
     toolCalls: allToolCalls,
