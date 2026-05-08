@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Package, FileText, BarChart2,
-  Inbox, Globe, Brain, Settings, Camera, Menu, X,
+  Inbox, Globe, Brain, Settings, Camera, GitFork, Menu, X,
 } from 'lucide-react'
 
 const nav = [
@@ -14,6 +14,7 @@ const nav = [
   { href: '/inventory', icon: Package, label: 'Inventory' },
   { href: '/scanner', icon: Camera, label: 'Scanner' },
   { href: '/runs', icon: FileText, label: 'Logs' },
+  { href: '/decisions', icon: GitFork, label: 'Decisions' },
   { href: '/monitor', icon: BarChart2, label: 'Monitor' },
   { href: '/putaway', icon: Inbox, label: 'Put Away' },
   { href: '/competitors', icon: Globe, label: 'Competitors' },

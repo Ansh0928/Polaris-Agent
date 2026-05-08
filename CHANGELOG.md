@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.4] - 2026-05-08
+
+### Added
+- Decisions dashboard (`/decisions`) — full audit trail of every `log_decision` call, showing action, reasoning, timestamp, and linked run status badge
+- Agent Memory page upgraded: search/filter by key or value, inline edit, delete with confirmation, expandable write history per entry
+- `agent_memory_history` table (migration 010) — tracks every `write_memory` call with timestamp and optional `run_id` link
+- `writeMemory` dual-writes to `agent_memory_history` so the agent's learning is fully auditable
+- Manual memory edit/delete via server actions (`updateMemoryEntry`, `deleteMemoryEntry`) with `revalidatePath` cache invalidation
+- Decisions nav item added to sidebar between Logs and Monitor
+
 ## [0.1.3] - 2026-05-08
 
 ### Changed
