@@ -88,7 +88,7 @@ export function ScanView({ zoneId, zoneName, lastCount }: Props) {
           video: { facingMode: { ideal: 'environment' }, width: { ideal: 640 }, height: { ideal: 480 } },
         })
         const video = videoRef.current
-        if (!video) return
+        if (!video) { stream?.getTracks().forEach((t) => t.stop()); stream = null; return }
         video.srcObject = stream
         await video.play()
 
