@@ -141,11 +141,11 @@ Return a JSON object with this exact structure:
     throw new Error('reasonWithHermes: LLM returned no choices')
   }
 
-  const content = response.choices[0]?.message?.content
-  if (!content) throw new Error('Model returned empty response')
+  const content = response.choices[0]?.message?.content ?? ''
 
   let report: AgentReport
   try {
+    if (!content) throw new Error('empty response from model')
     const jsonStr = content.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim()
     const parsed = JSON.parse(jsonStr) as AgentReport
     if (!Array.isArray(parsed.expiry_alerts)) throw new Error('expiry_alerts not array')
