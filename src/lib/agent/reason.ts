@@ -1,6 +1,5 @@
 import type { FlaggedItem, SupplierResult, WebsitePrice, InventoryWithProduct, AgentReport } from '@/types'
-import { createClientForRun } from '@/lib/ollama-client'
-import { withRetry } from '@/lib/agent/engine/retry'
+import { createClientForRun, createGroqClient } from '@/lib/ollama-client'
 
 export async function reasonWithHermes(
   flagged: FlaggedItem[],
@@ -93,11 +92,14 @@ Return a JSON object with this exact structure:
   "summary": "2-3 sentence executive summary covering inventory alerts and margin intelligence"
 }`
 
-  const llmBaseUrl = process.env.LLM_BASE_URL ?? 'http://localhost:11434/v1'
-  const response = await withRetry(async () => {
-    const client = await createClientForRun(llmBaseUrl)
-    return client.chat.completions.create({
-      model: process.env.LLM_MODEL ?? 'qwen3:14b',
+  const llmBaseUrl = (process.env.LLM_BASE_URL ?? 'http://localhost:11434/v1').trim()
+  const model = (process.env.LLM_MODEL ?? 'qwen3:14b').trim()
+
+  let client = await createClientForRun(llmBaseUrl)
+  let response: Awaited<ReturnType<typeof client.chat.completions.create>>
+  try {
+    response = await client.chat.completions.create({
+      model,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
@@ -106,7 +108,29 @@ Return a JSON object with this exact structure:
       temperature: 0.2,
       max_tokens: 2000,
     })
-  }, 3, 1000)
+  } catch (err) {
+    const isOllamaFailure = err instanceof Error && (
+      err.name === 'TimeoutError' ||
+      err.message.toLowerCase().includes('timeout') ||
+      err.message.startsWith('Ollama ')
+    )
+    if (isOllamaFailure && process.env.GROQ_API_KEY) {
+      console.log(`[reason] Ollama failed (${(err as Error).message.slice(0, 80)}) — falling back to Groq`)
+      client = createGroqClient()
+      response = await client.chat.completions.create({
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        response_format: { type: 'json_object' },
+        temperature: 0.2,
+        max_tokens: 2000,
+      })
+    } else {
+      throw err
+    }
+  }
 
   if (!response.choices?.length) {
     throw new Error('reasonWithHermes: LLM returned no choices')
