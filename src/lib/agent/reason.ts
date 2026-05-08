@@ -1,5 +1,5 @@
 import type { FlaggedItem, SupplierResult, WebsitePrice, InventoryWithProduct, AgentReport } from '@/types'
-import { createClientForRun, createGroqClient } from '@/lib/ollama-client'
+import { createClientForRun, createGroqClient, createOpenRouterClient } from '@/lib/ollama-client'
 
 export async function reasonWithHermes(
   flagged: FlaggedItem[],
@@ -114,9 +114,14 @@ Return a JSON object with this exact structure:
       err.message.toLowerCase().includes('timeout') ||
       err.message.startsWith('Ollama ')
     )
-    if (isOllamaFailure && process.env.GROQ_API_KEY) {
-      console.log(`[reason] Ollama failed (${(err as Error).message.slice(0, 80)}) — falling back to Groq`)
-      client = createGroqClient()
+    if (isOllamaFailure && (process.env.OPENROUTER_API_KEY || process.env.GROQ_API_KEY)) {
+      if (process.env.OPENROUTER_API_KEY) {
+        console.log(`[reason] Ollama failed (${(err as Error).message.slice(0, 80)}) — falling back to OpenRouter`)
+        client = createOpenRouterClient()
+      } else {
+        console.log(`[reason] Ollama failed (${(err as Error).message.slice(0, 80)}) — falling back to Groq`)
+        client = createGroqClient()
+      }
       response = await client.chat.completions.create({
         model,
         messages: [

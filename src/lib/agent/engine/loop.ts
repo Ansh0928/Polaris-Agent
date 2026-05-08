@@ -2,7 +2,7 @@ import type { FlaggedItem, SupplierResult, WebsitePrice, InventoryWithProduct, T
 import { TOOL_DEFINITIONS, executeTool } from './tools'
 import { loadMemory } from './memory'
 import { loadSkills } from './skills'
-import { createClientForRun, createGroqClient, type OpenAIStyleMessage } from '@/lib/ollama-client'
+import { createClientForRun, createGroqClient, createOpenRouterClient, type OpenAIStyleMessage } from '@/lib/ollama-client'
 import { saveCheckpoint } from './checkpoint'
 import { withRetry } from './retry'
 
@@ -132,9 +132,14 @@ export async function runAgentLoop(
         err.message.toLowerCase().includes('timeout') ||
         err.message.startsWith('Ollama ')
       )
-      if (isOllamaFailure && process.env.GROQ_API_KEY) {
-        console.log(`[loop] Ollama call failed (${(err as Error).message.slice(0, 80)}) — switching to Groq for remaining iterations`)
-        client = createGroqClient()
+      if (isOllamaFailure && (process.env.OPENROUTER_API_KEY || process.env.GROQ_API_KEY)) {
+        if (process.env.OPENROUTER_API_KEY) {
+          console.log(`[loop] Ollama call failed (${(err as Error).message.slice(0, 80)}) — switching to OpenRouter for remaining iterations`)
+          client = createOpenRouterClient()
+        } else {
+          console.log(`[loop] Ollama call failed (${(err as Error).message.slice(0, 80)}) — switching to Groq for remaining iterations`)
+          client = createGroqClient()
+        }
         response = await client.chat.completions.create({
           model: MODEL,
           messages,
