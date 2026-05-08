@@ -55,19 +55,27 @@ export default async function DecisionsPage() {
                 {row.run_id && (
                   <div className="mt-2 pt-2 border-t border-[#161b22] flex items-center gap-2">
                     <span className="text-[10px] text-[#484f58]">Run</span>
-                    <a
-                      href={`/runs/${row.run_id as string}`}
-                      className="text-[10px] text-[#58a6ff] hover:underline font-mono"
-                    >
-                      {(row.run_id as string).slice(0, 8)}…
-                    </a>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                      row.run_status === 'error'
-                        ? 'bg-[#f8514920] text-[#f85149]'
-                        : 'bg-[#3fb95020] text-[#3fb950]'
-                    }`}>
-                      {row.run_status as string}
-                    </span>
+                    {row.run_status ? (
+                      <a
+                        href={`/runs/${row.run_id as string}`}
+                        className="text-[10px] text-[#58a6ff] hover:underline font-mono"
+                      >
+                        View run →
+                      </a>
+                    ) : (
+                      <span className="text-[10px] text-[#484f58] font-mono">
+                        {(row.run_id as string).slice(0, 8)}…
+                      </span>
+                    )}
+                    {row.run_status && (
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                        row.run_status === 'error'
+                          ? 'bg-[#f8514920] text-[#f85149]'
+                          : 'bg-[#3fb95020] text-[#3fb950]'
+                      }`}>
+                        {row.run_status as string}
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
