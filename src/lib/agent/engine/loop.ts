@@ -7,7 +7,7 @@ import { saveCheckpoint } from './checkpoint'
 import { withRetry } from './retry'
 
 const MODEL = process.env.LLM_MODEL ?? 'qwen3:14b'
-const MAX_ITERATIONS = 12
+const MAX_ITERATIONS = 7
 
 function extractThinkBlocks(text: string): string[] {
   const blocks: string[] = []
