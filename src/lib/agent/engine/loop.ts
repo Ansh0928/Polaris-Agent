@@ -6,7 +6,7 @@ import { createClientForRun, createGroqClient, type OpenAIStyleMessage } from '@
 import { saveCheckpoint } from './checkpoint'
 import { withRetry } from './retry'
 
-const MODEL = process.env.LLM_MODEL ?? 'qwen3:14b'
+const MODEL = (process.env.LLM_MODEL ?? 'qwen3:14b').trim()
 const MAX_ITERATIONS = 7
 
 function extractThinkBlocks(text: string): string[] {
@@ -83,7 +83,7 @@ export async function runAgentLoop(
 ): Promise<LoopResult> {
   const [memory, skills] = await Promise.all([loadMemory(), Promise.resolve(loadSkills())])
 
-  const llmBaseUrl = process.env.LLM_BASE_URL ?? 'http://localhost:11434/v1'
+  const llmBaseUrl = (process.env.LLM_BASE_URL ?? 'http://localhost:11434/v1').trim()
 
   const systemPrompt = [
     'You are Polaris, an autonomous fresh food warehouse inventory management agent.',

@@ -138,10 +138,10 @@ export function createOpenRouterClient() {
 export function createGroqClient() {
   return makeOpenAICompatClient(
     'https://api.groq.com/openai/v1/chat/completions',
-    process.env.GROQ_API_KEY ?? '',
-    process.env.CLOUD_FALLBACK_MODEL ?? 'llama-3.3-70b-versatile',
+    (process.env.GROQ_API_KEY ?? '').trim(),
+    (process.env.CLOUD_FALLBACK_MODEL ?? 'llama-3.3-70b-versatile').trim(),
     'Groq',
-    22_000,
+    60_000,
   )
 }
 
