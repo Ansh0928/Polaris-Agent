@@ -6,7 +6,7 @@
 
 <p align="center">
   Built for the <strong>Hourglass AI Challenge · May 2026</strong><br>
-  <a href="https://polaris-agent.vercel.app">Live Demo</a> · <a href="https://github.com/Ansh0928/Polaris-Agent">GitHub</a>
+  <a href="https://polaris-agent.vercel.app">Live Demo</a> · <a href="https://github.com/Ansh0928/Polaris-Agent">GitHub</a> · <a href="https://hour-glass-ai-redesign.vercel.app/">Hourglass AI</a>
 </p>
 
 ---
