@@ -127,17 +127,22 @@ export async function runAgentLoop(
       })
     } catch (err) {
       // Ollama unreachable (timeout, 502, tunnel drop) — switch to Groq for this and remaining calls
+      const msg = err instanceof Error ? err.message : ''
       const isOllamaFailure = err instanceof Error && (
         err.name === 'TimeoutError' ||
-        err.message.toLowerCase().includes('timeout') ||
-        err.message.startsWith('Ollama ')
+        msg.toLowerCase().includes('timeout') ||
+        msg.startsWith('Ollama ')
       )
-      if (isOllamaFailure && ((process.env.GROQ_API_KEY ?? '').trim() || process.env.OPENROUTER_API_KEY)) {
-        if ((process.env.GROQ_API_KEY ?? '').trim()) {
-          console.log(`[loop] Ollama call failed (${(err as Error).message.slice(0, 80)}) — switching to Groq for remaining iterations`)
+      const isGroqRateLimit = msg.startsWith('Groq 429') || msg.includes('Groq: max rate limit retries exceeded')
+      if ((isOllamaFailure || isGroqRateLimit) && ((process.env.GROQ_API_KEY ?? '').trim() || process.env.OPENROUTER_API_KEY)) {
+        if (isGroqRateLimit && process.env.OPENROUTER_API_KEY) {
+          console.log(`[loop] Groq rate limit exhausted — switching to OpenRouter for remaining iterations`)
+          client = createOpenRouterClient()
+        } else if (isOllamaFailure && (process.env.GROQ_API_KEY ?? '').trim()) {
+          console.log(`[loop] Ollama call failed (${msg.slice(0, 80)}) — switching to Groq for remaining iterations`)
           client = createGroqClient()
-        } else {
-          console.log(`[loop] Ollama call failed (${(err as Error).message.slice(0, 80)}) — switching to OpenRouter for remaining iterations`)
+        } else if (process.env.OPENROUTER_API_KEY) {
+          console.log(`[loop] Ollama call failed (${msg.slice(0, 80)}) — switching to OpenRouter for remaining iterations`)
           client = createOpenRouterClient()
         }
         response = await client.chat.completions.create({

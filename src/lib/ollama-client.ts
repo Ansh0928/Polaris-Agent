@@ -81,6 +81,13 @@ export async function checkOllamaHealth(llmBaseUrl: string): Promise<boolean> {
   }
 }
 
+function parseRetryAfterMs(errorBody: string, headers: Headers): number {
+  const retryAfterHeader = headers.get('retry-after')
+  if (retryAfterHeader) return parseFloat(retryAfterHeader) * 1000 + 500
+  const match = errorBody.match(/try again in ([\d.]+)s/)
+  return match ? Math.ceil(parseFloat(match[1]) * 1000) + 500 : 15_000
+}
+
 function makeOpenAICompatClient(
   endpoint: string,
   apiKey: string,
@@ -107,19 +114,33 @@ function makeOpenAICompatClient(
     if (params.tool_choice) body.tool_choice = params.tool_choice
     if (params.response_format) body.response_format = params.response_format
 
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(timeoutMs),
-    })
+    const MAX_RATE_LIMIT_RETRIES = 2
+    for (let attempt = 1; attempt <= MAX_RATE_LIMIT_RETRIES + 1; attempt++) {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(timeoutMs),
+      })
 
-    if (!response.ok) {
-      const text = await response.text()
-      throw new Error(`${label} ${response.status}: ${text}`)
+      if (response.status === 429) {
+        const text = await response.text()
+        if (attempt > MAX_RATE_LIMIT_RETRIES) throw new Error(`${label} 429: ${text}`)
+        const delayMs = parseRetryAfterMs(text, response.headers)
+        console.log(`[${label}] rate limited — waiting ${delayMs}ms (attempt ${attempt}/${MAX_RATE_LIMIT_RETRIES})`)
+        await new Promise((r) => setTimeout(r, delayMs))
+        continue
+      }
+
+      if (!response.ok) {
+        const text = await response.text()
+        throw new Error(`${label} ${response.status}: ${text}`)
+      }
+
+      return response.json()
     }
 
-    return response.json()
+    throw new Error(`${label}: max rate limit retries exceeded`)
   }
 
   return { chat: { completions: { create } } }
