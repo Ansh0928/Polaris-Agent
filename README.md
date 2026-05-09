@@ -75,11 +75,7 @@ The agent doesn't just flag problems. It decides what to do about them. That's t
 
 > **Built through my own workflow, tested, hardened, no shortcuts.**
 
-- TypeScript strict throughout — no `any`, shared types in `src/types/index.ts`
-- Vitest unit tests on all pure functions (flagging logic, NMS, IoU, inference post-processing)
-- Security reviewed: bearer auth on agent route, parameterised SQL only, XSS-safe email HTML builder
-- Agentic loop guards: `MAX_ITERATIONS = 12`, `temperature = 0.2`, `<think>` block stripping, non-fatal reorder log writes
-- Fallback chain wired in the LLM client — EC2 down doesn't break the run
+TypeScript strict throughout — no `any`, shared types in `src/types/index.ts`. Vitest unit tests on all pure functions (flagging logic, NMS, IoU, inference post-processing). Security reviewed: bearer auth on agent route, parameterised SQL only, XSS-safe email HTML builder. Agentic loop guards: `MAX_ITERATIONS = 12`, `temperature = 0.2`, `<think>` block stripping, non-fatal reorder log writes. Fallback chain wired in the LLM client — EC2 down doesn't break the run.
 
 ---
 
@@ -121,9 +117,7 @@ The lesson: **the jaggedness of building something new is that you don't know wh
 
 ## Future Scope
 
-- Implement best practices tailored to each organisation's operational needs.
-- Propose moving from services to a product — an AI-native SaaS layer that SMBs subscribe to, not a one-time build. The repeatable value is in the agent running daily, not the initial setup.
-- Build brand presence through AEO, GEO, and SEO — story-led companies build more trust than feature-led ones.
+Implement best practices tailored to each organisation's operational needs. Propose moving from services to a product — an AI-native SaaS layer that SMBs subscribe to, not a one-time build. The repeatable value is in the agent running daily, not the initial setup. Build brand presence through AEO, GEO, and SEO — story-led companies build more trust than feature-led ones.
 
 **Personally:**
 I want to have an impact and be around people doing far better than me. I heard recently: *"if you're the best programmer at your company, you're at the wrong company."* I want to learn, take feedback, iterate, and grow — for myself and for whoever I'm building with.
@@ -134,13 +128,19 @@ I want to have an impact and be around people doing far better than me. I heard 
 
 Every morning at 5am AEST, Polaris runs autonomously:
 
-- **Checks the warehouse** — full inventory snapshot with quantities, locations, and expiry dates
-- **Expiry alerts** — flags anything expiring within 7 days before it becomes waste
-- **Low stock alerts** — flags items below reorder threshold before shelves go empty
-- **Intelligent ordering** — fetches live prices from multiple suppliers and recommends the best reorder option
-- **Margin intelligence** — compares wholesale cost prices against live retail prices, detects erosion trends
-- **Emails a report** — full daily summary delivered before the warehouse opens
-- **Remembers** — writes observations to persistent memory, so each run is informed by the last
+**Checks the warehouse** — full inventory snapshot with quantities, locations, and expiry dates
+
+**Expiry alerts** — flags anything expiring within 7 days before it becomes waste
+
+**Low stock alerts** — flags items below reorder threshold before shelves go empty
+
+**Intelligent ordering** — fetches live prices from multiple suppliers and recommends the best reorder option
+
+**Margin intelligence** — compares wholesale cost prices against live retail prices, detects erosion trends
+
+**Emails a report** — full daily summary delivered before the warehouse opens
+
+**Remembers** — writes observations to persistent memory, so each run is informed by the last
 
 > *"Salmon margin dropped 4.5% this week — supplier price spike noted. Recommend holding reorder until next cycle."*
 
