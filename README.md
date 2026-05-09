@@ -107,25 +107,6 @@ The agent tries EC2 first. If the instance is cold or unavailable, it falls thro
   <img src="docs/architecture.png" alt="Polaris Architecture Diagram" width="100%">
 </p>
 
-```
-GitHub Actions Cron (daily 5am AEST)
-  └─► POST /api/agent/run
-        └─► runAgentLoop()
-              ├── loadMemory()        — prior observations injected into system prompt
-              ├── loadSkills()        — SKILL.md domain knowledge
-              └── Agentic loop (max 12 iterations, tool_choice: auto)
-                    ├── check_inventory
-                    ├── flag_alerts
-                    ├── check_website_prices
-                    ├── fetch_supplier_prices
-                    ├── write_memory / read_memory
-                    └── create_purchase_order
-        └─► reasonWithLLM()          — structured JSON report synthesis
-        └─► sendDailyEmail()         — Resend (only if items flagged)
-        └─► INSERT agent_runs + reorder_log
-```
-
----
 ---
 
 ## Problems I Faced
