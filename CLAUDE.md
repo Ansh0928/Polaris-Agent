@@ -42,7 +42,7 @@ GitHub Actions cron (daily 6am AEST)
         └─► runAgentLoop()              src/lib/agent/engine/loop.ts
               ├── loadMemory()          reads agent_memory table → system prompt
               ├── loadSkills()          reads skills/*/SKILL.md → system prompt
-              └── Hermes 3 tool loop (max 12 iterations)
+              └── Hermes 3 tool loop (max 9 iterations)
                     ├── check_inventory    → snapshotInventory()
                     ├── flag_alerts        → flagItems()
                     ├── fetch_supplier_prices → fetchSupplierPrices() (TinyFish)
@@ -57,7 +57,7 @@ GitHub Actions cron (daily 6am AEST)
 
 ```
 src/lib/agent/engine/
-  loop.ts       Core agentic loop — Hermes pattern, max 12 iterations, strips <think> blocks
+  loop.ts       Core agentic loop — Hermes pattern, max 9 iterations, strips <think> blocks
   tools.ts      TOOL_DEFINITIONS (OpenAI-compatible) + executeTool() dispatcher
   memory.ts     loadMemory / writeMemory / readMemory — Neon agent_memory table
   skills.ts     loadSkills() — reads skills/*/SKILL.md into system prompt
@@ -138,7 +138,7 @@ Goal → Perceive → Reason → Act → Observe → Reason again → repeat
 2. LLM (GPT-OSS 20B via OpenRouter) decides which tool to call next — no hardcoded order
 3. Tool executes (inventory check, price fetch, memory read/write...)
 4. Result feeds back into context — LLM sees it and decides what to do next
-5. Loop continues until LLM stops calling tools (finish_reason = stop, max 12 iterations)
+5. Loop continues until LLM stops calling tools (finish_reason = stop, max 9 iterations)
 6. Second LLM call (`reasonWithHermes`) synthesises structured JSON report
 7. Email sent if any items flagged
 
@@ -159,7 +159,7 @@ Each tool call that appears in the logs = one autonomous decision by the LLM.
 
 ## Agent Loop — Critical Rules
 
-- **Max 12 iterations** (`MAX_ITERATIONS` in loop.ts). Hard ceiling — never raise without reason.
+- **Max 9 iterations** (`MAX_ITERATIONS` in loop.ts). Hard ceiling — never raise without reason.
 - **strip `<think>` blocks** — Hermes 3 emits `<think>`, `<thinking>`, `<reasoning>` tags. `stripThinkBlocks()` removes them from the final response.
 - **tool_choice: 'auto'** — the LLM decides which tools to call and in what order. Don't hardcode sequences.
 - **temperature: 0.2** — low for deterministic inventory analysis. Don't raise above 0.3.

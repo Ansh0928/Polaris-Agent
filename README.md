@@ -81,7 +81,7 @@ The agent doesn't just flag problems. It decides what to do about them. That's t
 
 > **Built through my own workflow, tested, hardened, no shortcuts.**
 
-TypeScript strict throughout — no `any`, shared types in `src/types/index.ts`. Vitest unit tests on all pure functions (flagging logic, NMS, IoU, inference post-processing). Security reviewed: bearer auth on agent route, parameterised SQL only, XSS-safe email HTML builder. Agentic loop guards: `MAX_ITERATIONS = 12`, `temperature = 0.2`, `<think>` block stripping, non-fatal reorder log writes. Fallback chain wired in the LLM client — EC2 down doesn't break the run.
+TypeScript strict throughout — no `any`, shared types in `src/types/index.ts`. Vitest unit tests on all pure functions (flagging logic, NMS, IoU, inference post-processing). Security reviewed: bearer auth on agent route, parameterised SQL only, XSS-safe email HTML builder. Agentic loop guards: `MAX_ITERATIONS = 9`, `temperature = 0.2`, `<think>` block stripping, non-fatal reorder log writes. Fallback chain wired in the LLM client — EC2 down doesn't break the run.
 
 ---
 

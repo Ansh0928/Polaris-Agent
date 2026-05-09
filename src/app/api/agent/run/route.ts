@@ -5,7 +5,7 @@ import { runAgentLoop } from '@/lib/agent/engine/loop'
 import type { ToolCallEvent } from '@/lib/agent/engine/loop'
 import { reasonWithHermes } from '@/lib/agent/reason'
 import { sendDailyEmail, buildEmailHtml } from '@/lib/agent/email'
-import type { PurchaseOrderSummary } from '@/types'
+import type { PurchaseOrderSummary, FlaggedItem, SupplierResult, WebsitePrice, AgentReport } from '@/types'
 
 export const maxDuration = 300
 
@@ -18,6 +18,33 @@ const DAILY_PROMPT = `Run the daily inventory analysis for this fresh food wareh
 6. Save any useful margin trends, seasonal, or supplier observations to memory.
 7. For each reorder recommendation, create a draft purchase order and log the decision.
 When done, summarise your findings including both inventory alerts and margin intelligence.`
+
+function buildFallbackReport(flagged: FlaggedItem[], supplierPrices: SupplierResult[], websitePrices: WebsitePrice[]): AgentReport {
+  const now = new Date().toISOString()
+  return {
+    generated_at: now,
+    expiry_alerts: flagged.filter((f) => f.reason === 'expiry' || f.reason === 'both').map((f) => ({
+      product_name: f.inventory.product.name,
+      quantity: f.inventory.quantity,
+      unit: f.inventory.product.unit,
+      expiry_date: f.inventory.expiry_date ?? '',
+      days_to_expiry: f.inventory.days_to_expiry ?? 0,
+      location: f.inventory.location,
+    })),
+    low_stock_alerts: flagged.filter((f) => f.reason === 'low_stock' || f.reason === 'both').map((f) => ({
+      product_name: f.inventory.product.name,
+      quantity: f.inventory.quantity,
+      unit: f.inventory.product.unit,
+      threshold: f.inventory.product.reorder_threshold,
+      location: f.inventory.location,
+    })),
+    reorder_recommendations: [],
+    supplier_prices: supplierPrices,
+    website_prices: websitePrices,
+    margin_alerts: [],
+    summary: `[Synthesis unavailable — ${flagged.length} items flagged. Raw data preserved in tool trace.]`,
+  }
+}
 
 async function fetchDraftPurchaseOrders(runId: string): Promise<PurchaseOrderSummary[]> {
   const rows = await sql`
@@ -93,30 +120,7 @@ async function streamAgentRun(req: NextRequest): Promise<Response> {
           report = await reasonWithHermes(flagged, supplierPrices, websitePrices, allInventory)
         } catch (reasonErr) {
           console.error('[route] reasonWithHermes failed — using minimal fallback report:', reasonErr)
-          const now = new Date().toISOString()
-          report = {
-            generated_at: now,
-            expiry_alerts: flagged.filter((f) => f.reason === 'expiry' || f.reason === 'both').map((f) => ({
-              product_name: f.inventory.product.name,
-              quantity: f.inventory.quantity,
-              unit: f.inventory.product.unit,
-              expiry_date: f.inventory.expiry_date ?? '',
-              days_to_expiry: f.inventory.days_to_expiry ?? 0,
-              location: f.inventory.location,
-            })),
-            low_stock_alerts: flagged.filter((f) => f.reason === 'low_stock' || f.reason === 'both').map((f) => ({
-              product_name: f.inventory.product.name,
-              quantity: f.inventory.quantity,
-              unit: f.inventory.product.unit,
-              threshold: f.inventory.product.reorder_threshold,
-              location: f.inventory.location,
-            })),
-            reorder_recommendations: [],
-            supplier_prices: supplierPrices,
-            website_prices: websitePrices,
-            margin_alerts: [],
-            summary: `[Synthesis unavailable — ${flagged.length} items flagged. Raw data preserved in tool trace.]`,
-          }
+          report = buildFallbackReport(flagged, supplierPrices, websitePrices)
         }
         const purchaseOrders = await fetchDraftPurchaseOrders(runId)
 
@@ -198,30 +202,7 @@ export async function POST(req: NextRequest) {
       report = await reasonWithHermes(flagged, supplierPrices, websitePrices, allInventory)
     } catch (reasonErr) {
       console.error('[route] reasonWithHermes failed — using minimal fallback report:', reasonErr)
-      const now = new Date().toISOString()
-      report = {
-        generated_at: now,
-        expiry_alerts: flagged.filter((f) => f.reason === 'expiry' || f.reason === 'both').map((f) => ({
-          product_name: f.inventory.product.name,
-          quantity: f.inventory.quantity,
-          unit: f.inventory.product.unit,
-          expiry_date: f.inventory.expiry_date ?? '',
-          days_to_expiry: f.inventory.days_to_expiry ?? 0,
-          location: f.inventory.location,
-        })),
-        low_stock_alerts: flagged.filter((f) => f.reason === 'low_stock' || f.reason === 'both').map((f) => ({
-          product_name: f.inventory.product.name,
-          quantity: f.inventory.quantity,
-          unit: f.inventory.product.unit,
-          threshold: f.inventory.product.reorder_threshold,
-          location: f.inventory.location,
-        })),
-        reorder_recommendations: [],
-        supplier_prices: supplierPrices,
-        website_prices: websitePrices,
-        margin_alerts: [],
-        summary: `[Synthesis unavailable — ${flagged.length} items flagged. Raw data preserved in tool trace.]`,
-      }
+      report = buildFallbackReport(flagged, supplierPrices, websitePrices)
     }
     const purchaseOrders = await fetchDraftPurchaseOrders(runId)
 

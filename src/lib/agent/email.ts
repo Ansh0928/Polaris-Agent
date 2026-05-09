@@ -131,7 +131,7 @@ export function buildEmailHtml(report: AgentReport): string {
     const cost = po.price_per_unit_aud != null
       ? `$${(po.price_per_unit_aud * po.qty).toFixed(2)}`
       : '—'
-    const approveUrl = `${appUrl}/api/orders/approve?token=${esc(po.approve_token)}`
+    const approveUrl = `${appUrl}/api/orders/approve?token=${encodeURIComponent(po.approve_token)}`
     return `<tr>
     <td style="${TD}${border}color:#111827;font-weight:500;">${esc(po.product_name)}</td>
     <td style="${TD}${border}color:#111827;padding-left:16px;">${po.qty} ${esc(po.unit)}</td>

@@ -59,6 +59,8 @@ export function RunAgentButton() {
     setRunId(null)
 
     try {
+      // NEXT_PUBLIC_AGENT_SECRET is exposed to the browser — intentional demo trade-off.
+      // In production, proxy through a server action or session-gated API route instead.
       const res = await fetch('/api/agent/run?stream=true', {
         method: 'POST',
         headers: {
