@@ -1,170 +1,56 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
 
-function buildSuccessHtml(orderId: string): string {
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://polaris-agent.vercel.app').replace(/\/$/, '')
+function esc(s: string): string {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
 
+function getAppUrl(): string {
+  return (process.env.NEXT_PUBLIC_APP_URL ?? 'https://polaris-agent.vercel.app').replace(/\/$/, '')
+}
+
+function buildPage(title: string, bodyContent: string): string {
+  const appUrl = getAppUrl()
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Order Approved</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${esc(title)}</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #18181b;
-      color: #ffffff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      padding: 20px;
-    }
-
-    .container {
-      background: #27272a;
-      border: 1px solid #3f3f46;
-      border-radius: 8px;
-      padding: 48px 32px;
-      max-width: 500px;
-      width: 100%;
-      text-align: center;
-    }
-
-    h1 {
-      font-size: 32px;
-      font-weight: 600;
-      margin-bottom: 24px;
-      color: #f4f4f5;
-    }
-
-    .order-id {
-      background: #18181b;
-      border: 1px solid #3f3f46;
-      border-radius: 6px;
-      padding: 16px;
-      margin-bottom: 32px;
-      word-break: break-all;
-      font-family: 'Monaco', 'Courier New', monospace;
-      font-size: 14px;
-      color: #a1a1a6;
-    }
-
-    .order-id-label {
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: #71717a;
-      margin-bottom: 8px;
-      display: block;
-    }
-
-    a {
-      display: inline-block;
-      background: #3f3f46;
-      color: #ffffff;
-      padding: 12px 24px;
-      border-radius: 6px;
-      text-decoration: none;
-      font-weight: 500;
-      transition: background-color 0.2s;
-      border: 1px solid #52525b;
-    }
-
-    a:hover {
-      background: #52525b;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #18181b; color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .container { background: #27272a; border: 1px solid #3f3f46; border-radius: 12px; padding: 40px; max-width: 480px; width: 100%; text-align: center; }
+    h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 8px; }
+    p { color: #a1a1aa; font-size: 14px; line-height: 1.6; }
+    .btn { display: inline-block; margin-top: 28px; background: #ffffff; color: #18181b; text-decoration: none; font-size: 13px; font-weight: 600; padding: 10px 24px; border-radius: 8px; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Order Approved</h1>
-    <div class="order-id">
-      <span class="order-id-label">Order ID</span>
-      ${orderId}
-    </div>
-    <a href="${appUrl}/runs">View Dashboard</a>
+    ${bodyContent}
+    <a href="${appUrl}/runs" class="btn">View Dashboard</a>
   </div>
 </body>
 </html>`
 }
 
+function buildSuccessHtml(orderId: string): string {
+  return buildPage('Order Approved', `
+    <h1>Order Approved</h1>
+    <p style="margin-top:8px;">Order <code style="font-family:monospace;background:#3f3f46;padding:2px 6px;border-radius:4px;">${esc(orderId)}</code> has been approved successfully.</p>
+  `)
+}
+
 function buildAlreadyProcessedHtml(status: string): string {
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://polaris-agent.vercel.app').replace(/\/$/, '')
-
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Order Already ${status}</title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #18181b;
-      color: #ffffff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      padding: 20px;
-    }
-
-    .container {
-      background: #27272a;
-      border: 1px solid #3f3f46;
-      border-radius: 8px;
-      padding: 48px 32px;
-      max-width: 500px;
-      width: 100%;
-      text-align: center;
-    }
-
-    h1 {
-      font-size: 32px;
-      font-weight: 600;
-      margin-bottom: 32px;
-      color: #f4f4f5;
-      text-transform: capitalize;
-    }
-
-    a {
-      display: inline-block;
-      background: #3f3f46;
-      color: #ffffff;
-      padding: 12px 24px;
-      border-radius: 6px;
-      text-decoration: none;
-      font-weight: 500;
-      transition: background-color 0.2s;
-      border: 1px solid #52525b;
-    }
-
-    a:hover {
-      background: #52525b;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>Order Already ${status}</h1>
-    <a href="${appUrl}/runs">View Dashboard</a>
-  </div>
-</body>
-</html>`
+  return buildPage(`Order Already ${esc(status)}`, `
+    <h1>Order Already ${esc(status)}</h1>
+    <p style="margin-top:8px;">This order has already been processed.</p>
+  `)
 }
 
 export async function GET(req: NextRequest) {
