@@ -103,9 +103,7 @@ The agent tries EC2 first. If the instance is cold or unavailable, it falls thro
 
 ## Architecture
 
-<p align="center">
-  <img src="docs/architecture.png" alt="Polaris Architecture Diagram" width="100%">
-</p>
+![Polaris Architecture Diagram](docs/architecture.png)
 
 ---
 
