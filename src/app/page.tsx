@@ -55,6 +55,7 @@ export default async function OverviewPage() {
 
   // Bar chart data — 7 runs oldest→newest (pad with nulls if fewer)
   const chartRuns = [...runs].reverse()
+  const maxToolCalls = Math.max(...chartRuns.map((r) => r.report_json?.tool_trace?.length ?? 0), 1)
 
   return (
     <div className="space-y-6 max-w-[1200px]">
@@ -103,12 +104,14 @@ export default async function OverviewPage() {
                 const run = chartRuns[i]
                 const isError = run?.status === 'error'
                 const hasRun = !!run
+                const toolCallCount = run?.report_json?.tool_trace?.length ?? 0
+                const barPct = hasRun ? Math.max(10, Math.round((toolCallCount / maxToolCalls) * 90)) : 8
                 return (
                   <div key={i} className="flex-1 flex flex-col items-center gap-1">
                     <div
                       className="w-full rounded-sm"
                       style={{
-                        height: hasRun ? '60%' : '8%',
+                        height: `${barPct}%`,
                         background: isError ? '#f85149' : hasRun ? '#1f6feb' : '#21262d',
                         minHeight: 4,
                       }}

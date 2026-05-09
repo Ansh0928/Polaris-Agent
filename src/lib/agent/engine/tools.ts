@@ -168,6 +168,13 @@ export async function executeTool(
         .map((i) => ({ inventory: i, reason: 'low_stock' as const }))
       if (!targets.length) return JSON.stringify([])
       const results = await fetchSupplierPrices(targets)
+      if (results.length === 0 && targets.length > 0) {
+        return JSON.stringify({
+          results: [],
+          status: 'api_unavailable',
+          note: `No supplier prices returned for [${productNames.slice(0, 5).join(', ')}]. TinyFish API appears unavailable or key is invalid. Use cost_price_aud from inventory for margin analysis. Call write_memory with key="supplier_price_status" noting today's date and this failure.`,
+        })
+      }
       return JSON.stringify(results)
     }
 

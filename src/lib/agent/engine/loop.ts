@@ -243,10 +243,18 @@ export async function runAgentLoop(
           })
         }
       } else if (toolsThisIter.includes('fetch_supplier_prices') && !done.has('check_website_prices')) {
-        messages.push({
-          role: 'user',
-          content: 'Now call check_website_prices to fetch retail prices from the Tasman Star website for margin analysis.',
-        })
+        // Check if supplier prices were unavailable — steer agent to record the failure
+        const supplierCall = [...allToolCalls].reverse().find((tc) => tc.name === 'fetch_supplier_prices')
+        const supplierEmpty = (() => {
+          try {
+            const p = JSON.parse(supplierCall?.result ?? '[]')
+            return p?.status === 'api_unavailable' || (Array.isArray(p) && p.length === 0)
+          } catch { return false }
+        })()
+        const nextStep = supplierEmpty && !done.has('write_memory')
+          ? `Supplier price API returned no data. First call write_memory with key="supplier_price_status" and value noting the current date and that TinyFish returned no results (use cost_price_aud from inventory for margin estimates). Then call check_website_prices for retail analysis.`
+          : `Now call check_website_prices to fetch retail prices from the Tasman Star website for margin analysis.`
+        messages.push({ role: 'user', content: nextStep })
       } else if (toolsThisIter.includes('check_website_prices') && !done.has('write_memory')) {
         messages.push({
           role: 'user',

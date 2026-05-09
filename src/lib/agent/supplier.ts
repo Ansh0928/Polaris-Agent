@@ -1,4 +1,5 @@
 import type { FlaggedItem, SupplierResult } from '@/types'
+import { withRetry } from './engine/retry'
 
 const TINYFISH_BASE = 'https://api.tinyfish.ai/v1'
 const SUPPLIERS = [
@@ -10,33 +11,37 @@ const SUPPLIERS = [
 const MAX_ITEMS = 5
 
 async function tinyFishSearch(query: string): Promise<{ url: string; title: string }[]> {
-  const res = await fetch(`${TINYFISH_BASE}/search`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.TINYFISH_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ query, limit: 5 }),
-    signal: AbortSignal.timeout(8000),
-  })
-  if (!res.ok) throw new Error(`TinyFish search failed: ${res.status}`)
-  const data = await res.json()
-  return data.results ?? []
+  return withRetry(async () => {
+    const res = await fetch(`${TINYFISH_BASE}/search`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.TINYFISH_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query, limit: 5 }),
+      signal: AbortSignal.timeout(8000),
+    })
+    if (!res.ok) throw new Error(`TinyFish search failed: ${res.status}`)
+    const data = await res.json()
+    return data.results ?? []
+  }, 2, 800)
 }
 
 async function tinyFishFetch(url: string): Promise<string> {
-  const res = await fetch(`${TINYFISH_BASE}/fetch`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.TINYFISH_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ url }),
-    signal: AbortSignal.timeout(8000),
-  })
-  if (!res.ok) throw new Error(`TinyFish fetch failed: ${res.status}`)
-  const data = await res.json()
-  return data.text ?? data.content ?? ''
+  return withRetry(async () => {
+    const res = await fetch(`${TINYFISH_BASE}/fetch`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.TINYFISH_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ url }),
+      signal: AbortSignal.timeout(8000),
+    })
+    if (!res.ok) throw new Error(`TinyFish fetch failed: ${res.status}`)
+    const data = await res.json()
+    return data.text ?? data.content ?? ''
+  }, 2, 800)
 }
 
 function extractPrice(text: string): number | null {
@@ -70,9 +75,17 @@ async function fetchOneSupplierPrice(productName: string, supplier: string): Pro
 }
 
 export async function fetchSupplierPrices(flagged: FlaggedItem[]): Promise<SupplierResult[]> {
-  // Quick reachability check — fail fast if TinyFish DNS is down
+  // Quick reachability check — fail fast if TinyFish DNS is down or key missing
+  if (!process.env.TINYFISH_API_KEY) {
+    console.log('[supplier] TINYFISH_API_KEY not set — skipping supplier price fetch')
+    return []
+  }
   try {
-    await fetch(`${TINYFISH_BASE}/health`, { signal: AbortSignal.timeout(2500) })
+    const healthRes = await fetch(`${TINYFISH_BASE}/health`, { signal: AbortSignal.timeout(3000) })
+    if (!healthRes.ok && healthRes.status !== 404) {
+      console.log(`[supplier] TinyFish health check returned ${healthRes.status} — skipping`)
+      return []
+    }
   } catch {
     console.log('[supplier] TinyFish unreachable — skipping supplier price fetch')
     return []
