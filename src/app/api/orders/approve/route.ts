@@ -13,6 +13,7 @@ function getAppUrl(): string {
   return (process.env.NEXT_PUBLIC_APP_URL ?? 'https://polaris-agent.vercel.app').replace(/\/$/, '')
 }
 
+/** bodyContent MUST contain only pre-escaped HTML — never pass raw user input directly */
 function buildPage(title: string, bodyContent: string): string {
   const appUrl = getAppUrl()
   return `<!DOCTYPE html>
@@ -80,11 +81,17 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Approval link expired' }, { status: 410 })
   }
 
-  await sql`
+  const updated = await sql`
     UPDATE purchase_orders
     SET status = 'approved'
     WHERE id = ${order.id}::uuid AND status = 'draft'
+    RETURNING id
   `
+
+  if (!updated.length) {
+    const html = buildAlreadyProcessedHtml('approved')
+    return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } })
+  }
 
   const html = buildSuccessHtml(order.id)
   return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } })

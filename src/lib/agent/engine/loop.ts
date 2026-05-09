@@ -7,6 +7,7 @@ import { saveCheckpoint } from './checkpoint'
 
 const MODEL = (process.env.LLM_MODEL ?? 'qwen3:14b').trim()
 const MAX_ITERATIONS = 9
+const MULTI_CALL_ALLOWED = new Set(['create_purchase_order'])
 
 function extractThinkBlocks(text: string): string[] {
   const blocks: string[] = []
@@ -195,7 +196,6 @@ export async function runAgentLoop(
 
       // Code-level dedup: text directive alone can be ignored by the model
       // create_purchase_order is exempt — one call per product is expected
-      const MULTI_CALL_ALLOWED = new Set(['create_purchase_order'])
       if (calledTools.has(toolName) && !MULTI_CALL_ALLOWED.has(toolName)) {
         console.log(`[loop] dedup: skipping duplicate call to ${toolName}`)
         toolResults.push({

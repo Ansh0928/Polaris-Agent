@@ -5,7 +5,6 @@ export async function GET() {
   const rows = await sql`
     SELECT
       po.id,
-      po.approve_token,
       po.qty,
       po.supplier,
       po.price_per_unit_aud,
@@ -29,7 +28,6 @@ export async function GET() {
       supplier: String(row.supplier),
       price_per_unit_aud: row.price_per_unit_aud != null ? Number(row.price_per_unit_aud) : null,
       agent_reason: String(row.agent_reason ?? ''),
-      approve_token: String(row.approve_token),
       status: String(row.status),
       created_at: String(row.created_at),
       expires_at: String(row.expires_at),
