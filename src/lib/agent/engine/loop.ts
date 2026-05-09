@@ -91,7 +91,7 @@ export async function runAgentLoop(
     'Use the available tools to gather data before synthesising recommendations.',
     'Be specific -- include product names, quantities (with units), and AUD prices.',
     'After gathering data, save any useful observations via write_memory.',
-    'Workflow: check_inventory -> flag_alerts -> fetch_supplier_prices -> check_website_prices -> write_memory -> respond.',
+    'Workflow: check_inventory -> flag_alerts -> fetch_supplier_prices -> check_website_prices -> write_memory -> create_purchase_order (one per low-stock item) -> respond.',
     memory,
     skills,
   ]
@@ -194,7 +194,9 @@ export async function runAgentLoop(
       const callId = tc.id
 
       // Code-level dedup: text directive alone can be ignored by the model
-      if (calledTools.has(toolName)) {
+      // create_purchase_order is exempt — one call per product is expected
+      const MULTI_CALL_ALLOWED = new Set(['create_purchase_order'])
+      if (calledTools.has(toolName) && !MULTI_CALL_ALLOWED.has(toolName)) {
         console.log(`[loop] dedup: skipping duplicate call to ${toolName}`)
         toolResults.push({
           role: 'tool',
@@ -260,10 +262,32 @@ export async function runAgentLoop(
           content: 'Now call write_memory to save any useful observations (e.g. margin trends, supplier preferences, seasonal notes). Then respond with your final analysis.',
         })
       } else if (toolsThisIter.includes('write_memory') && done.has('check_inventory') && done.has('flag_alerts') && done.has('check_website_prices')) {
-        // Workflow complete — agent has all data it needs. Force final response.
+        // Nudge to create purchase orders for low-stock items before wrapping up
+        const lowStockItems = extractLoopData(allToolCalls).flagged
+          .filter((f) => f.reason === 'low_stock' || f.reason === 'both')
+          .slice(0, 4)
+          .map((f) => ({ name: f.inventory.product.name, product_id: f.inventory.product.id }))
+        if (lowStockItems.length > 0 && !allToolCalls.some((tc) => tc.name === 'create_purchase_order')) {
+          const { supplierPrices } = extractLoopData(allToolCalls)
+          const supplierHint = supplierPrices.length > 0
+            ? `Use the best-priced supplier from the fetch_supplier_prices results.`
+            : `No live supplier prices were returned — use "pfdfoodservice.com.au" as the default supplier for all orders.`
+          messages.push({
+            role: 'user',
+            content: `Memory saved. Now call create_purchase_order for each low-stock item. You MUST include the supplier field in every call. Products to order: ${JSON.stringify(lowStockItems)}. Use the product_id exactly as shown. ${supplierHint} Include a clear reason for each order.`,
+          })
+        } else {
+          // Workflow complete — agent has all data it needs. Force final response.
+          messages.push({
+            role: 'user',
+            content: 'Good. All data gathered. Now write your final analysis response covering: expiry/low-stock alerts, margin health, and reorder recommendations with quantities and AUD prices. Do not call any more tools.',
+          })
+        }
+      } else if (toolsThisIter.some((t) => t === 'create_purchase_order') && done.has('write_memory') && done.has('flag_alerts')) {
+        // POs created — force final response
         messages.push({
           role: 'user',
-          content: 'Good. All data gathered. Now write your final analysis response covering: expiry/low-stock alerts, margin health, and reorder recommendations with quantities and AUD prices. Do not call any more tools.',
+          content: 'Purchase orders created. Now write your final analysis response covering: expiry/low-stock alerts, margin health, reorder recommendations, and purchase orders submitted. Do not call any more tools.',
         })
       }
     }
