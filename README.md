@@ -19,8 +19,6 @@ In fresh food, expiry is everything. A missed expiry date doesn't just cost you 
 
 After talking to owners across different industries, one thing kept coming up: **everyone is happy doing manual work — nobody wants to do admin.** And the bigger insight was around staff. Most SMBs run on hourly-wage workers. Any system that requires a person to actively engage every day will fail — not because it's hard, but because it disrupts the routine they've already built. The real bottleneck isn't software — **it's the human in the loop.**
 
-I run a fresh food wholesale business in Australia. I know this problem from the inside. Every morning, someone has to check what's expiring, what's running low, what to reorder and from which supplier. That person was usually me.
-
 I didn't build an app for that problem. I built an agent — one that wakes up every morning, checks the warehouse, reasons about what it finds, and acts. Without being told to. Without a single prompt after setup.
 
 **22 tool calls in 7 days. Zero human prompts. Working system in production.**
@@ -95,13 +93,15 @@ Post-IPO, the major AI companies will raise prices. And in a world where privacy
 
 The answer is yes.
 
-| Priority | Model | Where |
-|---|---|---|
-| Primary | Qwen3:14B (self-hosted) | AWS EC2 via Ollama |
-| Fallback 1 | GPT-OSS 20B | OpenRouter (free tier) |
-| Fallback 2 | Llama-3.3-70B | Groq (free tier) |
+| Priority | Model | Where | Why this model |
+|---|---|---|---|
+| Primary | **Qwen3:14B** | AWS EC2 via Ollama | Best-in-class tool calling at 14B scale. Qwen3 was specifically trained for agentic tasks — structured JSON output, multi-step reasoning, and function calling without hallucinating tool arguments. At 14B it fits comfortably on a single EC2 g4dn instance and runs inference fast enough for a daily 12-iteration loop. |
+| Fallback 1 | **GPT-OSS 20B** | OpenRouter (free tier) | When EC2 is cold, GPT-OSS 20B via OpenRouter picks up instantly. Stronger general reasoning than Llama at similar scale. Free tier handles the agent's low call volume without rate limits. |
+| Fallback 2 | **Llama-3.3-70B** | Groq (free tier) | Last resort — but paradoxically the most capable model in the chain. Groq's LPU inference makes 70B feel faster than most hosted 7B models. If OpenRouter throttles, Llama-3.3-70B on Groq delivers the most thorough analysis of the three. |
 
-The agent tries EC2 first. If the instance is cold or unavailable, it falls through to OpenRouter, then Groq. Three layers of redundancy. All open-source. Running cost for the AI layer: effectively $0.
+Every model in the chain was chosen for **tool-calling reliability and structured output** — the two things that matter in an agentic loop. A model that hallucinates a tool argument breaks the run. Qwen3, GPT-OSS, and Llama-3.3 are all proven on function-calling benchmarks. Temperature is fixed at 0.2 across all three — deterministic enough for inventory decisions, not so rigid it can't adapt to edge cases.
+
+The agent tries EC2 first. If unavailable, it falls to OpenRouter, then Groq. Three layers of redundancy. All open-source. Running cost for the AI layer: effectively $0.
 
 ---
 
