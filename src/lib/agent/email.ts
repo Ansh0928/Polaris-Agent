@@ -1,5 +1,5 @@
 import { Resend } from 'resend'
-import type { AgentReport } from '@/types'
+import type { AgentReport, PurchaseOrderSummary } from '@/types'
 
 const resend = new Resend(process.env.RESEND_API_KEY!)
 
@@ -123,6 +123,25 @@ export function buildEmailHtml(report: AgentReport): string {
 
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://polaris-agent.vercel.app').replace(/\/$/, '')
 
+  // Purchase orders section
+  const purchaseOrderRows = (report.purchase_orders ?? []).map((po: PurchaseOrderSummary, i: number) => {
+    const last = i === (report.purchase_orders ?? []).length - 1
+    const border = last ? 'border-bottom:none;' : ''
+    const cost = po.price_per_unit_aud != null
+      ? `$${(po.price_per_unit_aud * po.qty).toFixed(2)}`
+      : '—'
+    const approveUrl = `${appUrl}/api/orders/approve?token=${po.approve_token}`
+    return `<tr>
+    <td style="${TD}${border}color:#111827;font-weight:500;">${esc(po.product_name)}</td>
+    <td style="${TD}${border}color:#111827;padding-left:16px;">${po.qty} ${esc(po.unit)}</td>
+    <td style="${TD}${border}color:#6b7280;padding-left:16px;">${esc(po.supplier)}</td>
+    <td style="${TD}${border}color:#111827;font-weight:600;padding-left:16px;">${cost}</td>
+    <td style="${TD}${border}text-align:right;padding-left:16px;">
+      <a href="${approveUrl}" style="display:inline-block;padding:4px 12px;border-radius:6px;background:#18181b;color:#ffffff;text-decoration:none;font-size:11px;font-weight:600;">Approve</a>
+    </td>
+  </tr>`
+  })
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -181,6 +200,10 @@ export function buildEmailHtml(report: AgentReport): string {
         <td>
           <span style="display:inline-block;padding:4px 12px;border-radius:6px;background:#eff6ff;border:1px solid #bfdbfe;font-size:12px;font-weight:600;color:#1d4ed8;">${report.reorder_recommendations.length} reorders</span>
         </td>
+        ${(report.purchase_orders ?? []).length > 0 ? `
+        <td style="padding-left:8px;">
+          <span style="display:inline-block;padding:4px 12px;border-radius:6px;background:#ecfdf5;border:1px solid #6ee7b7;font-size:12px;font-weight:600;color:#059669;">${report.purchase_orders!.length} orders pending</span>
+        </td>` : ''}
       </tr>
     </table>
   </td></tr>
@@ -192,6 +215,8 @@ export function buildEmailHtml(report: AgentReport): string {
   ${report.low_stock_alerts.length > 0 ? section('#f59e0b', 'Low Stock', `${report.low_stock_alerts.length} item${report.low_stock_alerts.length !== 1 ? 's' : ''}`, dataTable(['Product', 'Current', 'Minimum', 'Location'], lowStockRows)) : ''}
 
   ${report.reorder_recommendations.length > 0 ? section('#3b82f6', 'Reorder Plan', `${report.reorder_recommendations.length} item${report.reorder_recommendations.length !== 1 ? 's' : ''}`, dataTable(['Product', 'Qty', 'Supplier', 'Est. Cost'], reorderRows)) : ''}
+
+  ${(report.purchase_orders ?? []).length > 0 ? section('#10b981', 'Draft Purchase Orders', `${(report.purchase_orders ?? []).length} awaiting approval`, dataTable(['Product', 'Qty', 'Supplier', 'Est. Cost', 'Action'], purchaseOrderRows)) : ''}
 
   ${(report.margin_alerts ?? []).length > 0 ? section('#8b5cf6', 'Margin Intelligence', 'retail vs cost', dataTable(['Product', 'Retail', 'Cost', 'Margin', 'Status'], marginRows)) : ''}
 
