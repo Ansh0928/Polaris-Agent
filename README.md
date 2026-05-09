@@ -49,6 +49,12 @@ After the IPOs of major AI companies, API prices will go up — that's a certain
 
 The fallback chain: **AWS EC2 → OpenRouter → Groq** — all open-source models, all free tier. The agent tries self-hosted Qwen3:14B first. If EC2 is cold, it falls to GPT-OSS 20B on OpenRouter, then Llama-3.3-70B on Groq. Three layers of redundancy. Running cost for the AI layer: effectively $0.
 
+The agent itself runs on the **Hermes 3 agentic pattern** — an open-source tool-calling framework that drives the reasoning loop. No proprietary agent SDK, no vendor lock-in. The tool loop, memory injection, and structured report synthesis are all built on Hermes conventions, open and auditable.
+
+For live supplier pricing, Polaris integrates **TinyFish** — an external open-source-friendly API that scrapes real AUD prices from PFD, Bidvest, and Harris Farm in real time. Instead of building a fragile scraper from scratch, the agent calls TinyFish and gets back structured price data it can reason over. The right tool for the right job.
+
+The principle: **find the best open systems, integrate them cleanly, and build only what doesn't exist yet.** That's how one developer in weeks ships something that would take a team months to build from scratch.
+
 ---
 
 ### 03 · Does It Work? — Show us it can handle the real world
