@@ -11,15 +11,19 @@
 
 ---
 
-## What This Is
+## Why This Problem
 
-I run a fresh food business — [Tasman Star Seafood Market](https://tasmanstarseafoodmarket.com.au), an Australian seafood retailer. Every morning, someone has to check what's expiring, what's running low, and what to reorder from which supplier. That person is usually me.
+After talking to small and mid-size business owners across different industries, one thing kept coming up: **everyone is happy doing manual work — nobody wants to do admin.**
+
+The bigger insight was around staff. Most SMBs run on hourly-wage workers. You could build the simplest tool in the world and they still won't use it — not because it's hard, but because it disrupts the routine they've already built. Any system that requires a person to actively engage every day will fail. The real bottleneck isn't software — **it's the human in the loop.**
+
+I run a fresh food business — [Tasman Star Seafood Market](https://tasmanstarseafoodmarket.com.au), an Australian seafood retailer. Every morning, someone has to check what's expiring, what's running low, and what to reorder from which supplier. That person was usually me.
 
 I didn't build an app for that problem. I built an agent. One that wakes up every morning, checks the warehouse, reasons about what it finds, and acts — without being told to.
 
 This is a working system in production, running against real inventory data, shipping daily. It made 22 tool calls in its first 7 days. Nobody prompted it once after setup.
 
-The insight behind it: most SMBs run on hourly-wage workers. Any system that requires daily human engagement will fail. The real bottleneck isn't software — it's the human in the loop. **Polaris removes that human from the loop entirely.**
+**Polaris removes that human from the loop entirely.**
 
 ---
 
@@ -47,11 +51,21 @@ The fallback chain: **AWS EC2 → OpenRouter → Groq** — all open-source mode
 
 ### 03 · Does It Work? — Show us it can handle the real world
 
-**Short answer:** Yes. Live, running daily, real data.
+**Short answer:** Yes. Live, running daily, real data. The agent owns every decision and every outcome.
 
 Polaris is deployed at [polaris-agent.vercel.app](https://polaris-agent.vercel.app) and has been running against real inventory for 7+ days. In that window it made **22 tool calls**, flagged **10 expiring items**, identified **6 low-stock risks**, and generated purchase order recommendations — unprompted.
 
-Every tool call is logged. Every decision is visible. Every memory write is queryable. Nothing is faked.
+**End-to-end accountability:** no human is in the decision loop. The agent:
+
+1. **Perceives** — calls `check_inventory`, gets a full warehouse snapshot with quantities, locations, expiry dates, and cost prices
+2. **Reasons** — the LLM decides which tools to call next, in what order, based on what it observes — no hardcoded sequence
+3. **Acts** — calls `flag_alerts` to surface expiry and reorder risks, `fetch_supplier_prices` to pull live AUD pricing from PFD, Bidvest, and Harris Farm, and `create_purchase_order` to draft the best reorder
+4. **Remembers** — writes key observations (margin trends, supplier spikes, patterns) to persistent memory via `write_memory`, so the next run is informed by the last
+5. **Reports** — synthesises a structured JSON report, builds an email, and sends it via Resend — only if items are flagged, never for noise
+
+Every decision is traceable. Every tool call is logged to the `agent_runs` table with full JSON output. Every memory write is queryable. The observability dashboard at [polaris-agent.vercel.app](https://polaris-agent.vercel.app) shows the full trace — tool call by tool call. Nothing is faked, nothing is mocked, nothing is cherry-picked.
+
+The agent doesn't just flag problems. It decides what to do about them. That's the difference between automation and autonomy.
 
 ---
 
