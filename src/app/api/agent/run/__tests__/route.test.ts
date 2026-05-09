@@ -175,4 +175,64 @@ describe('POST /api/agent/run — purchase_orders in extendedReport', () => {
     const parsed = JSON.parse(reportJsonArg as string) as { purchase_orders: PurchaseOrderSummary[] }
     expect(parsed.purchase_orders[0].price_per_unit_aud).toBeNull()
   })
+
+  it('streaming path fetches and includes purchase_orders in the DB update', async () => {
+    const draftPo = {
+      id: VALID_UUID,
+      approve_token: 'tok-stream',
+      qty: '7',
+      supplier: 'harrisfarm.com.au',
+      price_per_unit_aud: '9.99',
+      agent_reason: 'Low stock — streaming',
+      status: 'draft',
+      created_at: '2026-05-09T03:00:00Z',
+      product_name: 'Ocean Trout',
+      unit: 'kg',
+    }
+
+    // PO query result for streaming path
+    mockSql.mockResolvedValueOnce([draftPo])
+    // UPDATE agent_runs SET status = 'success'
+    mockSql.mockResolvedValueOnce([])
+
+    const { POST } = await import('../route')
+    const res = await POST(makeRequest(true))
+
+    // Streaming response is SSE — consume the full body to let the async start() complete
+    const reader = res.body!.getReader()
+    const chunks: string[] = []
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      chunks.push(new TextDecoder().decode(value))
+    }
+    const body = chunks.join('')
+
+    // The 'done' SSE event must carry the run_id
+    expect(body).toContain(`"type":"done"`)
+    expect(body).toContain(RUN_UUID)
+
+    // The UPDATE call must have included purchase_orders in report_json
+    const updateCall = mockSql.mock.calls.find((args) => {
+      const str = String(args[0]?.[0] ?? '')
+      return str.includes('UPDATE') && str.includes('agent_runs')
+    })
+    expect(updateCall).toBeDefined()
+    const reportJsonArg = updateCall?.find(
+      (arg: unknown) => typeof arg === 'string' && arg.includes('purchase_orders'),
+    )
+    expect(reportJsonArg).toBeDefined()
+
+    const parsed = JSON.parse(reportJsonArg as string) as { purchase_orders: PurchaseOrderSummary[] }
+    expect(parsed.purchase_orders).toHaveLength(1)
+    expect(parsed.purchase_orders[0]).toMatchObject({
+      id: VALID_UUID,
+      product_name: 'Ocean Trout',
+      qty: 7,
+      supplier: 'harrisfarm.com.au',
+      price_per_unit_aud: 9.99,
+      approve_token: 'tok-stream',
+      status: 'draft',
+    })
+  })
 })
