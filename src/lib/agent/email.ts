@@ -124,13 +124,14 @@ export function buildEmailHtml(report: AgentReport): string {
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://polaris-agent.vercel.app').replace(/\/$/, '')
 
   // Purchase orders section
-  const purchaseOrderRows = (report.purchase_orders ?? []).map((po: PurchaseOrderSummary, i: number) => {
-    const last = i === (report.purchase_orders ?? []).length - 1
+  const pos = report.purchase_orders ?? []
+  const purchaseOrderRows = pos.map((po: PurchaseOrderSummary, i: number) => {
+    const last = i === pos.length - 1
     const border = last ? 'border-bottom:none;' : ''
     const cost = po.price_per_unit_aud != null
       ? `$${(po.price_per_unit_aud * po.qty).toFixed(2)}`
       : '—'
-    const approveUrl = `${appUrl}/api/orders/approve?token=${po.approve_token}`
+    const approveUrl = `${appUrl}/api/orders/approve?token=${esc(po.approve_token)}`
     return `<tr>
     <td style="${TD}${border}color:#111827;font-weight:500;">${esc(po.product_name)}</td>
     <td style="${TD}${border}color:#111827;padding-left:16px;">${po.qty} ${esc(po.unit)}</td>
@@ -200,9 +201,9 @@ export function buildEmailHtml(report: AgentReport): string {
         <td>
           <span style="display:inline-block;padding:4px 12px;border-radius:6px;background:#eff6ff;border:1px solid #bfdbfe;font-size:12px;font-weight:600;color:#1d4ed8;">${report.reorder_recommendations.length} reorders</span>
         </td>
-        ${(report.purchase_orders ?? []).length > 0 ? `
+        ${pos.length > 0 ? `
         <td style="padding-left:8px;">
-          <span style="display:inline-block;padding:4px 12px;border-radius:6px;background:#ecfdf5;border:1px solid #6ee7b7;font-size:12px;font-weight:600;color:#059669;">${report.purchase_orders!.length} orders pending</span>
+          <span style="display:inline-block;padding:4px 12px;border-radius:6px;background:#ecfdf5;border:1px solid #6ee7b7;font-size:12px;font-weight:600;color:#059669;">${pos.length} orders pending</span>
         </td>` : ''}
       </tr>
     </table>
