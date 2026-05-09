@@ -19,7 +19,7 @@ In fresh food, expiry is everything. A missed expiry date doesn't just cost you 
 
 After talking to owners across different industries, one thing kept coming up: **everyone is happy doing manual work — nobody wants to do admin.** And the bigger insight was around staff. Most SMBs run on hourly-wage workers. Any system that requires a person to actively engage every day will fail — not because it's hard, but because it disrupts the routine they've already built. The real bottleneck isn't software — **it's the human in the loop.**
 
-I run [Tasman Star Seafood Market](https://tasmanstarseafoodmarket.com.au), an Australian seafood retailer. I know this problem from the inside. Every morning, someone has to check what's expiring, what's running low, what to reorder and from which supplier. That person was usually me.
+I run a fresh food wholesale business in Australia. I know this problem from the inside. Every morning, someone has to check what's expiring, what's running low, what to reorder and from which supplier. That person was usually me.
 
 I didn't build an app for that problem. I built an agent — one that wakes up every morning, checks the warehouse, reasons about what it finds, and acts. Without being told to. Without a single prompt after setup.
 
@@ -200,7 +200,7 @@ Thresholds: **Healthy ≥ 45%** · **Warning 30–44%** · **Critical < 30%**
 | Database | Neon serverless PostgreSQL |
 | AI — Primary | Qwen3:14B via Ollama on AWS EC2 |
 | AI — Fallback | GPT-OSS 20B via OpenRouter / Llama-3.3-70B via Groq |
-| Retail Price Scraping | tasmanstarseafoodmarket.com.au API |
+| Retail Price Scraping | Live storefront API |
 | Email | Resend |
 | Deployment | Vercel |
 | Scheduler | GitHub Actions cron |
