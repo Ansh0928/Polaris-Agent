@@ -11,6 +11,18 @@
 
 ---
 
+## What This Is
+
+I run a fresh food business — [Tasman Star Seafood Market](https://tasmanstarseafoodmarket.com.au), an Australian seafood retailer. Every morning, someone has to check what's expiring, what's running low, and what to reorder from which supplier. That person is usually me.
+
+I didn't build an app for that problem. I built an agent. One that wakes up every morning, checks the warehouse, reasons about what it finds, and acts — without being told to.
+
+This is a working system in production, running against real inventory data, shipping daily. It made 22 tool calls in its first 7 days. Nobody prompted it once after setup.
+
+The insight behind it: most SMBs run on hourly-wage workers. Any system that requires daily human engagement will fail. The real bottleneck isn't software — it's the human in the loop. **Polaris removes that human from the loop entirely.**
+
+---
+
 ## Judging Criteria
 
 ### 01 · AI-Nativeness — Is the agent truly autonomous?
@@ -55,34 +67,6 @@ Every tool call is logged. Every decision is visible. Every memory write is quer
 
 ---
 
-## Why This Problem
-
-After talking to small and mid-size business owners across different industries, one thing kept coming up: **everyone is happy doing manual work — nobody wants to do admin.**
-
-The bigger insight was around staff. Most SMBs run on hourly-wage workers. You could build the simplest tool in the world and they still won't use it — not because it's hard, but because it disrupts the routine they've already built. Any system that requires a person to actively engage every day will fail. The real bottleneck isn't software — **it's the human in the loop.**
-
-Polaris removes that human from the loop entirely.
-
----
-
-## What It Does
-
-Every morning at 5am AEST, Polaris runs autonomously:
-
-- **Checks the warehouse** — full inventory snapshot with quantities, locations, and expiry dates
-- **Expiry alerts** — flags anything expiring within 7 days before it becomes waste
-- **Low stock alerts** — flags items below reorder threshold before shelves go empty
-- **Intelligent ordering** — fetches live prices from multiple suppliers and recommends the best reorder option
-- **Margin intelligence** — compares wholesale cost prices against live retail prices, detects erosion trends
-- **Emails a report** — full daily summary delivered before the warehouse opens
-- **Remembers** — writes observations to persistent memory, so each run is informed by the last
-
-> *"Salmon margin dropped 4.5% this week — supplier price spike noted. Recommend holding reorder until next cycle."*
-
-That's the agent reasoning across runs without being told to.
-
----
-
 ## The Free AI Stack
 
 This is the part I'm most proud of.
@@ -121,40 +105,43 @@ The lesson: **the jaggedness of building something new is that you don't know wh
 
 ## Future Scope
 
-
 - Implement best practices tailored to each organisation's operational needs.
 - Propose moving from services to a product — an AI-native SaaS layer that SMBs subscribe to, not a one-time build. The repeatable value is in the agent running daily, not the initial setup.
 - Build brand presence through AEO, GEO, and SEO — story-led companies build more trust than feature-led ones.
 
 **Personally:**
-I want to have an impact and be around people doing far better than me. I heard recently: *"if you're the best programmer at your company, you're at the wrong company."*. I want to learn, take feedback, iterate, and grow — for myself and for whoever I'm building with.
-
-
-## Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Framework | Next.js 16 (App Router) |
-| Language | TypeScript |
-| Database | Neon serverless PostgreSQL |
-| AI — Primary | Qwen3:14B via Ollama on AWS EC2 |
-| AI — Fallback | GPT-OSS 20B via OpenRouter / Llama-3.3-70B via Groq |
-| Retail Price Scraping | tasmanstarseafoodmarket.com.au API |
-| Email | Resend |
-| Deployment | Vercel |
-| Scheduler | GitHub Actions cron |
-| Styling | Tailwind CSS v4 |
-| Package Manager | Bun |
+I want to have an impact and be around people doing far better than me. I heard recently: *"if you're the best programmer at your company, you're at the wrong company."* I want to learn, take feedback, iterate, and grow — for myself and for whoever I'm building with.
 
 ---
 
-## Does It Work?
+## What It Does
 
-Yes. Polaris is live at [polaris-agent.vercel.app](https://polaris-agent.vercel.app) and has been running daily against real inventory data.
+Every morning at 5am AEST, Polaris runs autonomously:
 
-In 7 days of runs it made **22 tool calls**, flagged **10 expiring items** and **6 low-stock items**, and generated purchase order recommendations — all without a single human prompt after initial setup.
+- **Checks the warehouse** — full inventory snapshot with quantities, locations, and expiry dates
+- **Expiry alerts** — flags anything expiring within 7 days before it becomes waste
+- **Low stock alerts** — flags items below reorder threshold before shelves go empty
+- **Intelligent ordering** — fetches live prices from multiple suppliers and recommends the best reorder option
+- **Margin intelligence** — compares wholesale cost prices against live retail prices, detects erosion trends
+- **Emails a report** — full daily summary delivered before the warehouse opens
+- **Remembers** — writes observations to persistent memory, so each run is informed by the last
 
-The agent observability dashboard shows every tool call, every decision, every memory write. Nothing is a black box.
+> *"Salmon margin dropped 4.5% this week — supplier price spike noted. Recommend holding reorder until next cycle."*
+
+That's the agent reasoning across runs without being told to.
+
+---
+
+## Memory — How It Gets Smarter
+
+After each run the agent writes key observations to a persistent `agent_memory` table:
+
+```
+key: "salmon_margin_trend"
+value: "Week 1: 62%. Week 2: 57.5%. Declining — supplier spike on Atlantic salmon."
+```
+
+Next run, that row is injected into the system prompt. The agent reads its own history and reasons against it. Trends emerge without any human intervention — just the agent watching itself across time.
 
 ---
 
@@ -184,85 +171,23 @@ Each run the agent:
 
 Thresholds: **Healthy ≥ 45%** · **Warning 30–44%** · **Critical < 30%**
 
-The daily email includes a full margin table with trend direction.
-
 ---
 
-## Memory — How It Gets Smarter
+## Tech Stack
 
-After each run the agent writes key observations to a persistent `agent_memory` table:
-
-```
-key: "salmon_margin_trend"
-value: "Week 1: 62%. Week 2: 57.5%. Declining — supplier spike on Atlantic salmon."
-```
-
-Next run, that row is injected into the system prompt. The agent reads its own history and reasons against it. Trends emerge without any human intervention — just the agent watching itself across time.
-
----
-
-## Code Quality
-
-Built through my own development workflow:
-
-- TypeScript throughout — strict types, no `any`
-- Vitest unit tests for all pure functions (NMS, IoU, inventory flagging logic)
-- Security hardened: bearer auth on agent route, parameterised SQL only, XSS-safe email builder
-- Agentic loop guard: `MAX_ITERATIONS = 12`, `temperature = 0.2`, `<think>` block stripping
-- Reorder log failures are intentionally non-fatal — agent runs never abort on write errors
-
----
-
-## Project Structure
-
-```
-src/
-├── app/
-│   ├── page.tsx                    # Dashboard: KPIs, alerts, recent runs
-│   ├── inventory/page.tsx          # Full inventory table
-│   ├── scanner/                    # Phone camera scanner (YOLOv8n)
-│   ├── runs/[id]/page.tsx          # Run detail: tool trace + email preview
-│   └── api/
-│       ├── agent/run/route.ts      # POST — triggers agent loop (Bearer auth)
-│       ├── inventory/route.ts      # GET — current snapshot
-│       └── runs/route.ts           # GET — recent 20 runs
-├── lib/agent/
-│   ├── engine/loop.ts              # Core agentic loop
-│   ├── engine/tools.ts             # Tool definitions + executors
-│   ├── engine/memory.ts            # Cross-run DB memory
-│   ├── snapshot.ts                 # Inventory query with cost prices
-│   ├── flag.ts                     # Expiry + reorder threshold logic
-│   ├── supplier.ts                 # Live supplier price fetcher
-│   ├── website.ts                  # Live retail price fetcher
-│   ├── reason.ts                   # LLM JSON report synthesis
-│   └── email.ts                    # Resend email builder
-migrations/
-├── 001_initial.sql                 # Core tables
-├── 002_agent_memory.sql            # Agent memory
-├── 003_location_columns.sql        # Warehouse zones
-└── 004_cost_price.sql              # Wholesale cost prices
-```
-
----
-
-## Database Schema
-
-### `products`
-| Column | Type | Notes |
-|---|---|---|
-| id | UUID PK | |
-| name | TEXT | |
-| category | TEXT | fish / meat / dairy / produce |
-| unit | TEXT | kg / L / each |
-| reorder_threshold | INT | Minimum stock level |
-| cost_price_aud | NUMERIC | Wholesale cost per unit |
-
-### `agent_memory`
-| Column | Type | Notes |
-|---|---|---|
-| key | TEXT PK | Observation identifier |
-| value | TEXT | Persisted trend or note |
-| updated_at | TIMESTAMPTZ | |
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 16 (App Router) |
+| Language | TypeScript |
+| Database | Neon serverless PostgreSQL |
+| AI — Primary | Qwen3:14B via Ollama on AWS EC2 |
+| AI — Fallback | GPT-OSS 20B via OpenRouter / Llama-3.3-70B via Groq |
+| Retail Price Scraping | tasmanstarseafoodmarket.com.au API |
+| Email | Resend |
+| Deployment | Vercel |
+| Scheduler | GitHub Actions cron |
+| Styling | Tailwind CSS v4 |
+| Package Manager | Bun |
 
 ---
 
@@ -297,7 +222,6 @@ ADMIN_EMAIL=your@email.com
 AGENT_SECRET=...
 NEXT_PUBLIC_AGENT_SECRET=...
 ```
-
 
 ---
 
