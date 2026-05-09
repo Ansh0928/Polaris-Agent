@@ -70,7 +70,9 @@ export default async function OverviewPage() {
                 : 'No runs yet'}
             </p>
           </div>
-          <RunAgentButton />
+          <div id="tour-run-btn">
+            <RunAgentButton />
+          </div>
         </div>
         <Image
           src="/polaris-logo.png"
@@ -83,7 +85,7 @@ export default async function OverviewPage() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div id="tour-stats" className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatBox label="Expiring Soon" value={expiring.length} accent={expiring.length > 0 ? '#f85149' : '#8b949e'} icon={<AlertTriangle size={14} />} />
         <StatBox label="Low Stock" value={lowStock.length} accent={lowStock.length > 0 ? '#d29922' : '#8b949e'} icon={<TrendingDown size={14} />} />
         <StatBox label="Runs (7d)" value={runs.length} accent="#8b949e" icon={<Activity size={14} />} />
@@ -93,7 +95,7 @@ export default async function OverviewPage() {
       {/* Two-column panels */}
       <div className="grid grid-cols-1 md:grid-cols-[1fr_340px] gap-4">
         {/* Left: Agent Observability */}
-        <div className="bg-[#0d1117] border border-[#21262d] rounded-lg overflow-hidden">
+        <div id="tour-observability" className="bg-[#0d1117] border border-[#21262d] rounded-lg overflow-hidden">
           <div className="px-5 py-3.5 border-b border-[#21262d]">
             <span className="text-[11px] font-semibold text-[#8b949e] uppercase tracking-wider">Agent Observability — last 7 days</span>
           </div>
@@ -154,7 +156,7 @@ export default async function OverviewPage() {
         </div>
 
         {/* Right: Critical Alerts */}
-        <div className="bg-[#0d1117] border border-[#21262d] rounded-lg overflow-hidden">
+        <div id="tour-alerts" className="bg-[#0d1117] border border-[#21262d] rounded-lg overflow-hidden">
           <div className="px-5 py-3.5 border-b border-[#21262d]">
             <span className="text-[11px] font-semibold text-[#8b949e] uppercase tracking-wider">Critical Alerts</span>
           </div>

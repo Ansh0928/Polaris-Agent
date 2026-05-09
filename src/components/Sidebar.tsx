@@ -10,27 +10,28 @@ import {
 } from 'lucide-react'
 
 const nav = [
-  { href: '/', icon: LayoutDashboard, label: 'Overview' },
-  { href: '/inventory', icon: Package, label: 'Inventory' },
-  { href: '/scanner', icon: Camera, label: 'Scanner' },
-  { href: '/runs', icon: FileText, label: 'Logs' },
-  { href: '/decisions', icon: GitFork, label: 'Decisions' },
-  { href: '/monitor', icon: BarChart2, label: 'Monitor' },
-  { href: '/putaway', icon: Inbox, label: 'Put Away' },
-  { href: '/competitors', icon: Globe, label: 'Competitors' },
-  { href: '/memory', icon: Brain, label: 'Agent Memory' },
-  { href: '/settings', icon: Settings, label: 'Settings' },
+  { href: '/', icon: LayoutDashboard, label: 'Overview', tourId: 'tour-nav-overview' },
+  { href: '/inventory', icon: Package, label: 'Inventory', tourId: 'tour-nav-inventory' },
+  { href: '/scanner', icon: Camera, label: 'Scanner', tourId: 'tour-scanner' },
+  { href: '/runs', icon: FileText, label: 'Logs', tourId: 'tour-nav-logs' },
+  { href: '/decisions', icon: GitFork, label: 'Decisions', tourId: 'tour-nav-decisions' },
+  { href: '/monitor', icon: BarChart2, label: 'Monitor', tourId: 'tour-nav-monitor' },
+  { href: '/putaway', icon: Inbox, label: 'Put Away', tourId: 'tour-nav-putaway' },
+  { href: '/competitors', icon: Globe, label: 'Competitors', tourId: 'tour-nav-competitors' },
+  { href: '/memory', icon: Brain, label: 'Agent Memory', tourId: 'tour-nav-memory' },
+  { href: '/settings', icon: Settings, label: 'Settings', tourId: 'tour-nav-settings' },
 ]
 
 function NavLinks({ pathname, onNav }: { pathname: string; onNav?: () => void }) {
   return (
     <>
-      {nav.map(({ href, icon: Icon, label }) => {
+      {nav.map(({ href, icon: Icon, label, tourId }) => {
         const active = pathname === href || (href !== '/' && pathname.startsWith(href))
         return (
           <Link
             key={href}
             href={href}
+            id={tourId}
             onClick={onNav}
             className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-[13px] transition-colors ${
               active
@@ -64,7 +65,7 @@ export function Sidebar() {
             </div>
           </div>
         </div>
-        <nav className="flex-1 p-2 space-y-0.5">
+        <nav id="tour-sidebar" className="flex-1 p-2 space-y-0.5">
           <NavLinks pathname={pathname} />
         </nav>
       </aside>
