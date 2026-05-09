@@ -25,8 +25,8 @@ I didn't build an app for that problem. I built an agent — one that wakes up e
 
 **22 tool calls in 7 days. Zero human prompts. Working system in production.**
 
-**Polaris removes that human from the loop entirely.**
-
+**Polaris removes that human from the loop entirely.** 
+** Kept an easy tour - walkthrough to understand easy and fast ** 
 ---
 
 ## Judging Criteria
