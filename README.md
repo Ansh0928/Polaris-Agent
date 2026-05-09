@@ -126,6 +126,30 @@ GitHub Actions Cron (daily 5am AEST)
 ```
 
 ---
+---
+
+## Problems I Faced
+
+The hardest part wasn't the code — it was the infrastructure.
+
+The original plan was to self-host the LLM locally on my Mac and expose it to production. Simple idea. I searched everywhere for how to make that work reliably — tunneling through Cloudflare was the first attempt. It didn't work. Kept hitting walls: connection drops, timeouts, no stable way to keep a local machine as a production dependency.
+
+Eventually landed on AWS EC2. Setting up the instance, getting Ollama running, configuring IMDSv2 for metadata security, making the fallback chain reliable — that took far longer than any of the application code. But it worked, and it's the right architecture: a real server, not my laptop.
+
+The lesson: **the jaggedness of building something new is that you don't know what you don't know.** You plan, hit a wall, search, pivot, and eventually find the path. That process is the job.
+
+---
+
+## Future Scope
+
+
+- Implement best practices tailored to each organisation's operational needs.
+- Propose moving from services to a product — an AI-native SaaS layer that SMBs subscribe to, not a one-time build. The repeatable value is in the agent running daily, not the initial setup.
+- Build brand presence through AEO, GEO, and SEO — story-led companies build more trust than feature-led ones.
+
+**Personally:**
+I want to have an impact and be around people doing far better than me. I heard recently: *"if you're the best programmer at your company, you're at the wrong company."*. I want to learn, take feedback, iterate, and grow — for myself and for whoever I'm building with.
+
 
 ## Tech Stack
 
@@ -295,32 +319,6 @@ AGENT_SECRET=...
 NEXT_PUBLIC_AGENT_SECRET=...
 ```
 
----
-
-## Problems I Faced
-
-The hardest part wasn't the code — it was the infrastructure.
-
-The original plan was to self-host the LLM locally on my Mac and expose it to production. Simple idea. I searched everywhere for how to make that work reliably — tunneling through Cloudflare was the first attempt. It didn't work. Kept hitting walls: connection drops, timeouts, no stable way to keep a local machine as a production dependency.
-
-Eventually landed on AWS EC2. Setting up the instance, getting Ollama running, configuring IMDSv2 for metadata security, making the fallback chain reliable — that took far longer than any of the application code. But it worked, and it's the right architecture: a real server, not my laptop.
-
-The lesson: **the jaggedness of building something new is that you don't know what you don't know.** You plan, hit a wall, search, pivot, and eventually find the path. That process is the job.
-
----
-
-## Future Scope
-
-**For Polaris specifically:**
-- Implement best practices tailored to each organisation's operational needs — different thresholds, different suppliers, different alert logic
-- Expand the agent tool set: competitor price monitoring, demand forecasting, automated purchase order submission
-
-**For Hourglass AI as a product direction:**
-- Propose moving from services to a product — an AI-native SaaS layer that SMBs subscribe to, not a one-time build. The repeatable value is in the agent running daily, not the initial setup.
-- Build brand presence through AEO, GEO, and SEO — story-led companies build more trust than feature-led ones. The narrative of "we remove the admin burden" is more powerful than any feature list.
-
-**Personally:**
-I want to be in rooms with people doing far better than me. I heard recently: *"if you're the best programmer at your company, you're at the wrong company."* That stuck. I'm here to learn, take feedback, iterate, and grow — for myself and for whoever I'm building with.
 
 ---
 
