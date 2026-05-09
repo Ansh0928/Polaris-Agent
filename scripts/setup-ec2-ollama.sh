@@ -31,11 +31,18 @@ curl -s http://localhost:11434/api/tags | python3 -m json.tool
 
 echo ""
 echo "=== DONE ==="
-echo "EC2 public IP: $(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)"
+TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" \
+  -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+PUBLIC_IP=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" \
+  http://169.254.169.254/latest/meta-data/public-ipv4)
+
+echo "EC2 public IP: $PUBLIC_IP"
 echo ""
 echo "Set these on Vercel:"
-echo "  LLM_BASE_URL=http://$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4):11434/v1"
+echo "  LLM_BASE_URL=http://$PUBLIC_IP:11434/v1"
 echo "  LLM_MODEL=qwen3:14b"
 echo "  LLM_NO_FALLBACK=true"
 echo ""
 echo "EC2 Security Group: allow inbound TCP port 11434 from 0.0.0.0/0"
+echo ""
+echo "Stop instance when done: aws ec2 stop-instances --instance-ids <ID>"
