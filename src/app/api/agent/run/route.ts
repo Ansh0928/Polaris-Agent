@@ -5,6 +5,7 @@ import { runAgentLoop } from '@/lib/agent/engine/loop'
 import type { ToolCallEvent } from '@/lib/agent/engine/loop'
 import { reasonWithHermes } from '@/lib/agent/reason'
 import { sendDailyEmail, buildEmailHtml } from '@/lib/agent/email'
+import type { PurchaseOrderSummary } from '@/types'
 
 export const maxDuration = 300
 
@@ -17,6 +18,38 @@ const DAILY_PROMPT = `Run the daily inventory analysis for this fresh food wareh
 6. Save any useful margin trends, seasonal, or supplier observations to memory.
 7. For each reorder recommendation, create a draft purchase order and log the decision.
 When done, summarise your findings including both inventory alerts and margin intelligence.`
+
+async function fetchDraftPurchaseOrders(runId: string): Promise<PurchaseOrderSummary[]> {
+  const rows = await sql`
+    SELECT
+      po.id,
+      po.approve_token,
+      po.qty,
+      po.supplier,
+      po.price_per_unit_aud,
+      po.agent_reason,
+      po.status,
+      po.created_at,
+      p.name AS product_name,
+      p.unit AS unit
+    FROM purchase_orders po
+    JOIN products p ON po.product_id = p.id
+    WHERE po.run_id = ${runId}::uuid
+      AND po.status = 'draft'
+  `
+  return rows.map((row) => ({
+    id: String(row.id),
+    product_name: String(row.product_name),
+    qty: Number(row.qty),
+    unit: String(row.unit),
+    supplier: String(row.supplier),
+    price_per_unit_aud: row.price_per_unit_aud != null ? Number(row.price_per_unit_aud) : null,
+    agent_reason: String(row.agent_reason ?? ''),
+    approve_token: String(row.approve_token),
+    status: row.status as PurchaseOrderSummary['status'],
+    created_at: String(row.created_at),
+  }))
+}
 
 function checkAuth(secret: string | null): boolean {
   const expected = process.env.AGENT_SECRET
@@ -85,7 +118,14 @@ async function streamAgentRun(req: NextRequest): Promise<Response> {
             summary: `[Synthesis unavailable — ${flagged.length} items flagged. Raw data preserved in tool trace.]`,
           }
         }
-        const extendedReport = { ...report, tool_trace: toolTrace, reasoning_blocks: reasoningBlocks }
+        const purchaseOrders = await fetchDraftPurchaseOrders(runId)
+
+        const extendedReport = {
+          ...report,
+          tool_trace: toolTrace,
+          reasoning_blocks: reasoningBlocks,
+          purchase_orders: purchaseOrders,
+        }
 
         const shouldEmail = flagged.length > 0 || websitePrices.length > 0
         const emailHtml = shouldEmail ? await sendDailyEmail(report) : buildEmailHtml(report)
@@ -183,7 +223,14 @@ export async function POST(req: NextRequest) {
         summary: `[Synthesis unavailable — ${flagged.length} items flagged. Raw data preserved in tool trace.]`,
       }
     }
-    const extendedReport = { ...report, tool_trace: toolTrace, reasoning_blocks: reasoningBlocks }
+    const purchaseOrders = await fetchDraftPurchaseOrders(runId)
+
+    const extendedReport = {
+      ...report,
+      tool_trace: toolTrace,
+      reasoning_blocks: reasoningBlocks,
+      purchase_orders: purchaseOrders,
+    }
 
     const shouldEmail = flagged.length > 0 || websitePrices.length > 0
     const emailHtml = shouldEmail ? await sendDailyEmail(report) : buildEmailHtml(report)

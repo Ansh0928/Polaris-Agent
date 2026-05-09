@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.2.0] - 2026-05-09
+
+### Added
+- Purchase Orders workflow: agent now calls `create_purchase_order` for each low-stock item after gathering data, creating draft POs in the database
+- Orders page (`/orders`) — lists all purchase orders with status chips (draft/approved/received/cancelled), cost calculation, agent reason, and one-click Approve button
+- Approve endpoint (`GET /api/orders/approve?token=<UUID>`) — token-based PO approval with styled HTML confirmation page
+- Sidebar Orders nav item with live amber badge showing count of pending draft POs (polled every 60s)
+- Mobile hamburger menu shows amber dot when draft POs are pending
+- Demo tour v4: new Orders step explaining draft PO approval flow; corrected Decisions step description
+- `scripts/setup-ec2-ollama.sh` — helper script for running the Ollama LLM on AWS EC2 with IMDSv2-compliant metadata fetches
+
+### Fixed
+- Agent dedup guard now exempts `create_purchase_order` — previously blocked after the first PO, preventing multi-product orders
+- Agent workflow nudge now fires after `write_memory` to ensure POs are created before final response
+- Fallback supplier (`pfdfoodservice.com.au`) used when live price API returns no results
+- Approve token stripped from `GET /api/orders` JSON response (was exposed to unauthenticated callers)
+- Concurrent approve requests now correctly detect zero-row UPDATE and return already-processed page
+- `MULTI_CALL_ALLOWED` Set hoisted to module scope (was recreated on every tool loop iteration)
+
 ## [0.1.4] - 2026-05-08
 
 ### Added

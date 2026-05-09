@@ -102,7 +102,7 @@ export const TOOL_DEFINITIONS: OpenAI.Chat.ChatCompletionTool[] = [
         type: 'object',
         properties: {
           product_id: { type: 'string', description: 'UUID of the product to order. Must be the exact `product.id` value returned by check_inventory — do not invent or guess this value.' },
-          supplier: { type: 'string', description: 'Supplier name (e.g. pfdfoodservice.com.au)' },
+          supplier: { type: 'string', description: 'REQUIRED. Supplier name (e.g. pfdfoodservice.com.au). Use best price from fetch_supplier_prices, or default to "pfdfoodservice.com.au".' },
           qty: { type: 'number', description: 'Quantity to order (in product units)' },
           reason: { type: 'string', description: 'Why this order is being created — included in approval email' },
           price_per_unit_aud: { type: 'number', description: 'Live price per unit in AUD (optional)' },

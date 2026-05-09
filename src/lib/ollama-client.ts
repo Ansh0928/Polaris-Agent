@@ -170,6 +170,10 @@ export async function createClientForRun(llmBaseUrl: string) {
   const healthy = await checkOllamaHealth(llmBaseUrl)
   if (healthy) return createOllamaClient(llmBaseUrl)
 
+  if (process.env.LLM_NO_FALLBACK === 'true') {
+    throw new Error(`Ollama unreachable at ${llmBaseUrl} — LLM_NO_FALLBACK=true, no fallback allowed`)
+  }
+
   // Groq: reliable infrastructure, 70B model, free tier
   if ((process.env.GROQ_API_KEY ?? '').trim()) {
     console.log('[loop] Ollama unreachable — routing to Groq (llama-3.3-70b-versatile)')

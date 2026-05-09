@@ -70,6 +70,19 @@ export interface ReorderRecommendation {
   reason: string
 }
 
+export interface PurchaseOrderSummary {
+  id: string
+  product_name: string
+  qty: number
+  unit: string
+  supplier: string
+  price_per_unit_aud: number | null
+  agent_reason: string
+  approve_token: string
+  status: 'draft' | 'approved' | 'received' | 'cancelled'
+  created_at: string
+}
+
 export interface WebsitePrice {
   product_name: string
   retail_price_aud: number
@@ -144,4 +157,5 @@ export interface AgentReport {
   tool_trace?: ToolTrace[]
   reasoning_blocks?: ReasoningBlock[]
   competitor_prices?: Array<{ source_label: string; source_url: string; prices: CompetitorPrice[] }>
+  purchase_orders?: PurchaseOrderSummary[]
 }

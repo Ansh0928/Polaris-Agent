@@ -1,12 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Package, FileText, BarChart2,
-  Inbox, Globe, Brain, Settings, Camera, GitFork, Menu, X,
+  Inbox, Globe, Brain, Settings, Camera, GitFork, Menu, X, ShoppingCart,
 } from 'lucide-react'
 
 const nav = [
@@ -14,6 +14,7 @@ const nav = [
   { href: '/inventory', icon: Package, label: 'Inventory', tourId: 'tour-nav-inventory' },
   { href: '/scanner', icon: Camera, label: 'Scanner', tourId: 'tour-scanner' },
   { href: '/runs', icon: FileText, label: 'Logs', tourId: 'tour-nav-logs' },
+  { href: '/orders', icon: ShoppingCart, label: 'Orders', tourId: 'tour-nav-orders', badge: true },
   { href: '/decisions', icon: GitFork, label: 'Decisions', tourId: 'tour-nav-decisions' },
   { href: '/monitor', icon: BarChart2, label: 'Monitor', tourId: 'tour-nav-monitor' },
   { href: '/putaway', icon: Inbox, label: 'Put Away', tourId: 'tour-nav-putaway' },
@@ -22,11 +23,31 @@ const nav = [
   { href: '/settings', icon: Settings, label: 'Settings', tourId: 'tour-nav-settings' },
 ]
 
-function NavLinks({ pathname, onNav }: { pathname: string; onNav?: () => void }) {
+function useDraftOrderCount() {
+  const [count, setCount] = useState<number>(0)
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      try {
+        const res = await fetch('/api/orders')
+        if (!res.ok) return
+        const data = await res.json() as Array<{ status: string }>
+        if (!cancelled) setCount(data.filter((o) => o.status === 'draft').length)
+      } catch { /* ignore */ }
+    }
+    load()
+    const interval = setInterval(load, 60_000)
+    return () => { cancelled = true; clearInterval(interval) }
+  }, [])
+  return count
+}
+
+function NavLinks({ pathname, draftCount, onNav }: { pathname: string; draftCount: number; onNav?: () => void }) {
   return (
     <>
-      {nav.map(({ href, icon: Icon, label, tourId }) => {
+      {nav.map(({ href, icon: Icon, label, tourId, badge }) => {
         const active = pathname === href || (href !== '/' && pathname.startsWith(href))
+        const showBadge = badge && draftCount > 0
         return (
           <Link
             key={href}
@@ -40,7 +61,12 @@ function NavLinks({ pathname, onNav }: { pathname: string; onNav?: () => void })
             }`}
           >
             <Icon size={14} strokeWidth={1.8} />
-            {label}
+            <span className="flex-1">{label}</span>
+            {showBadge && (
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#d29542] text-[#0d1117] leading-none">
+                {draftCount}
+              </span>
+            )}
           </Link>
         )
       })}
@@ -51,6 +77,7 @@ function NavLinks({ pathname, onNav }: { pathname: string; onNav?: () => void })
 export function Sidebar() {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
+  const draftCount = useDraftOrderCount()
 
   return (
     <>
@@ -66,7 +93,7 @@ export function Sidebar() {
           </div>
         </div>
         <nav id="tour-sidebar" className="flex-1 p-2 space-y-0.5">
-          <NavLinks pathname={pathname} />
+          <NavLinks pathname={pathname} draftCount={draftCount} />
         </nav>
       </aside>
 
@@ -78,10 +105,13 @@ export function Sidebar() {
         </div>
         <button
           onClick={() => setOpen(true)}
-          className="p-2 text-[#8b949e] hover:text-[#c9d1d9]"
+          className="relative p-2 text-[#8b949e] hover:text-[#c9d1d9]"
           aria-label="Open menu"
         >
           <Menu size={20} />
+          {draftCount > 0 && (
+            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#d29542]" />
+          )}
         </button>
       </header>
 
@@ -110,7 +140,7 @@ export function Sidebar() {
               </button>
             </div>
             <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
-              <NavLinks pathname={pathname} onNav={() => setOpen(false)} />
+              <NavLinks pathname={pathname} draftCount={draftCount} onNav={() => setOpen(false)} />
             </nav>
           </div>
         </div>
