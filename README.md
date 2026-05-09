@@ -13,15 +13,17 @@
 
 ## Why This Problem
 
-After talking to small and mid-size business owners across different industries, one thing kept coming up: **everyone is happy doing manual work — nobody wants to do admin.**
+Every fresh food warehouse owner I've spoken to wants the same thing: to compete with Coles and Woolworths. They have the product, they have the relationships, they have the hustle. What they don't have is the infrastructure — the systems that the big players run silently in the background, 24 hours a day, that mean nothing goes to waste and shelves are never empty.
 
-The bigger insight was around staff. Most SMBs run on hourly-wage workers. You could build the simplest tool in the world and they still won't use it — not because it's hard, but because it disrupts the routine they've already built. Any system that requires a person to actively engage every day will fail. The real bottleneck isn't software — **it's the human in the loop.**
+In fresh food, expiry is everything. A missed expiry date doesn't just cost you money — it costs you trust. And in this industry, trust takes years to build and a single incident to lose. For most owners, **time and trust matter more than anything else.** More than margin. More than technology.
 
-I run a fresh food business — [Tasman Star Seafood Market](https://tasmanstarseafoodmarket.com.au), an Australian seafood retailer. Every morning, someone has to check what's expiring, what's running low, and what to reorder from which supplier. That person was usually me.
+After talking to owners across different industries, one thing kept coming up: **everyone is happy doing manual work — nobody wants to do admin.** And the bigger insight was around staff. Most SMBs run on hourly-wage workers. Any system that requires a person to actively engage every day will fail — not because it's hard, but because it disrupts the routine they've already built. The real bottleneck isn't software — **it's the human in the loop.**
 
-I didn't build an app for that problem. I built an agent. One that wakes up every morning, checks the warehouse, reasons about what it finds, and acts — without being told to.
+I run [Tasman Star Seafood Market](https://tasmanstarseafoodmarket.com.au), an Australian seafood retailer. I know this problem from the inside. Every morning, someone has to check what's expiring, what's running low, what to reorder and from which supplier. That person was usually me.
 
-This is a working system in production, running against real inventory data, shipping daily. It made 22 tool calls in its first 7 days. Nobody prompted it once after setup.
+I didn't build an app for that problem. I built an agent — one that wakes up every morning, checks the warehouse, reasons about what it finds, and acts. Without being told to. Without a single prompt after setup.
+
+**22 tool calls in 7 days. Zero human prompts. Working system in production.**
 
 **Polaris removes that human from the loop entirely.**
 
