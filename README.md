@@ -31,7 +31,7 @@ This is a working system in production, running against real inventory data, shi
 
 ### 01 · AI-Nativeness — Is the agent truly autonomous?
 
-**Short answer:** Yes. No human touches it between runs.
+> **Yes. No human touches it between runs.**
 
 Every morning at 5am AEST, Polaris wakes up, checks the warehouse, reasons about what it finds, and acts — all without a single prompt from a person. It decides which tools to call, in what order, based on what it observes. It writes notes to its own memory and reads them back next run. The only human involvement is reading the email it sends.
 
@@ -41,7 +41,7 @@ The deeper insight: the real bottleneck in any SMB system isn't the software —
 
 ### 02 · Creativity & Ambition — Bold ideas over safe ones
 
-**Short answer:** Built a production AI agent with a $0 LLM bill.
+> **Built a production AI agent with a $0 LLM bill.**
 
 After the IPOs of major AI companies, API prices will go up — that's a certainty. And in a world where privacy still matters, I didn't want warehouse data flowing through closed models. So I challenged myself: can I build a capable, production-grade agent entirely on open-source?
 
@@ -51,7 +51,7 @@ The fallback chain: **AWS EC2 → OpenRouter → Groq** — all open-source mode
 
 ### 03 · Does It Work? — Show us it can handle the real world
 
-**Short answer:** Yes. Live, running daily, real data. The agent owns every decision and every outcome.
+> **Yes. Live, running daily, real data. The agent owns every decision and every outcome — and gets smarter with each run.**
 
 Polaris is deployed at [polaris-agent.vercel.app](https://polaris-agent.vercel.app) and has been running against real inventory for 7+ days. In that window it made **22 tool calls**, flagged **10 expiring items**, identified **6 low-stock risks**, and generated purchase order recommendations — unprompted.
 
@@ -63,6 +63,8 @@ Polaris is deployed at [polaris-agent.vercel.app](https://polaris-agent.vercel.a
 4. **Remembers** — writes key observations (margin trends, supplier spikes, patterns) to persistent memory via `write_memory`, so the next run is informed by the last
 5. **Reports** — synthesises a structured JSON report, builds an email, and sends it via Resend — only if items are flagged, never for noise
 
+**It improves with every run.** Each cycle, the agent writes what it observed to memory — margin trends, supplier price spikes, patterns in stock movement. The next run reads that history back and reasons against it. More data means sharper decisions: the longer it runs, the more context it has, and the more accurate its recommendations become. Day 1 it flags expiry. Day 7 it notices the salmon margin has been sliding for a week.
+
 Every decision is traceable. Every tool call is logged to the `agent_runs` table with full JSON output. Every memory write is queryable. The observability dashboard at [polaris-agent.vercel.app](https://polaris-agent.vercel.app) shows the full trace — tool call by tool call. Nothing is faked, nothing is mocked, nothing is cherry-picked.
 
 The agent doesn't just flag problems. It decides what to do about them. That's the difference between automation and autonomy.
@@ -71,7 +73,7 @@ The agent doesn't just flag problems. It decides what to do about them. That's t
 
 ### 04 · Code Quality — How you think and build
 
-**Short answer:** Built through my own workflow, tested, hardened, no shortcuts.
+> **Built through my own workflow, tested, hardened, no shortcuts.**
 
 - TypeScript strict throughout — no `any`, shared types in `src/types/index.ts`
 - Vitest unit tests on all pure functions (flagging logic, NMS, IoU, inference post-processing)
@@ -202,40 +204,6 @@ Thresholds: **Healthy ≥ 45%** · **Warning 30–44%** · **Critical < 30%**
 | Scheduler | GitHub Actions cron |
 | Styling | Tailwind CSS v4 |
 | Package Manager | Bun |
-
----
-
-## Setup
-
-```bash
-git clone https://github.com/Ansh0928/Polaris-Agent.git
-cd Polaris-Agent
-bun install
-cp .env.example .env.local   # fill in values
-bunx tsx scripts/migrate.ts
-bunx tsx scripts/seed-demo.ts
-bun dev
-```
-
-Trigger manually:
-```bash
-curl -X POST http://localhost:3000/api/agent/run \
-  -H "Authorization: Bearer your-agent-secret"
-```
-
----
-
-## Environment Variables
-
-```env
-DATABASE_URL=postgresql://...
-OPENROUTER_API_KEY=sk-or-v1-...
-RESEND_API_KEY=re_...
-RESEND_FROM=Polaris <onboarding@resend.dev>
-ADMIN_EMAIL=your@email.com
-AGENT_SECRET=...
-NEXT_PUBLIC_AGENT_SECRET=...
-```
 
 ---
 
