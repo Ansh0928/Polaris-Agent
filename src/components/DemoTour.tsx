@@ -7,6 +7,138 @@ import { BookOpen } from 'lucide-react'
 
 const TOUR_KEY = 'polaris-tour-seen-v3'
 
+const DEMO_EMAIL_HTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Polaris Daily Brief</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased;">
+<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#f3f4f6;">
+<tr><td align="center" style="padding:24px 14px 28px;">
+<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="max-width:520px;">
+
+  <tr><td style="background:#18181b;border-radius:10px 10px 0 0;padding:16px 22px;">
+    <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+      <tr>
+        <td><span style="font-size:14px;font-weight:700;color:#fff;letter-spacing:-0.2px;">Polaris</span><span style="font-size:11px;color:#71717a;margin-left:8px;">Inventory Intelligence</span></td>
+        <td align="right" style="font-size:11px;color:#52525b;">Saturday, 9 May 2026, 05:00 AEST</td>
+      </tr>
+    </table>
+  </td></tr>
+
+  <tr><td style="background:#fff;border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb;padding:18px 22px 14px;">
+    <table cellpadding="0" cellspacing="0" role="presentation">
+      <tr>
+        <td style="padding-right:10px;vertical-align:middle;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ef4444;"></span></td>
+        <td><span style="font-size:19px;font-weight:700;color:#111827;letter-spacing:-0.4px;">3 alerts need attention</span></td>
+      </tr>
+    </table>
+    <p style="margin:8px 0 0;font-size:12px;color:#6b7280;line-height:1.6;max-width:440px;">Atlantic Salmon expires in 2 days. Tiger Prawns are critically low. Bidvest has Barramundi $0.80/kg cheaper than your current supplier.</p>
+  </td></tr>
+
+  <tr><td style="background:#fff;border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb;padding:0 22px;"><div style="height:1px;background:#f3f4f6;"></div></td></tr>
+
+  <tr><td style="background:#fff;border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb;padding:12px 22px 16px;">
+    <table cellpadding="0" cellspacing="0" role="presentation"><tr>
+      <td style="padding-right:8px;"><span style="display:inline-block;padding:3px 10px;border-radius:6px;background:#fef2f2;border:1px solid #fecaca;font-size:11px;font-weight:600;color:#dc2626;">1 expiring</span></td>
+      <td style="padding-right:8px;"><span style="display:inline-block;padding:3px 10px;border-radius:6px;background:#fffbeb;border:1px solid #fde68a;font-size:11px;font-weight:600;color:#b45309;">1 low stock</span></td>
+      <td><span style="display:inline-block;padding:3px 10px;border-radius:6px;background:#eff6ff;border:1px solid #bfdbfe;font-size:11px;font-weight:600;color:#1d4ed8;">1 reorder</span></td>
+    </tr></table>
+  </td></tr>
+
+  <tr><td style="height:12px;"></td></tr>
+
+  <tr><td style="padding-bottom:10px;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;">
+      <tr><td style="border-left:3px solid #ef4444;padding:13px 20px 11px;">
+        <span style="font-size:12px;font-weight:600;color:#111827;">Expiry Alerts</span>
+        <span style="font-size:11px;color:#9ca3af;margin-left:8px;">1 item</span>
+      </td></tr>
+      <tr><td style="padding:0 20px 14px;">
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <thead><tr>
+            <th style="padding:0 0 7px 0;text-align:left;font-size:10px;font-weight:500;color:#9ca3af;">Product</th>
+            <th style="padding:0 0 7px 12px;text-align:left;font-size:10px;font-weight:500;color:#9ca3af;">Stock</th>
+            <th style="padding:0 0 7px 12px;text-align:left;font-size:10px;font-weight:500;color:#9ca3af;">Expires</th>
+            <th style="padding:0 0 7px 12px;text-align:right;font-size:10px;font-weight:500;color:#9ca3af;">Location</th>
+          </tr></thead>
+          <tbody><tr>
+            <td style="padding:7px 0;font-size:12px;color:#111827;font-weight:500;">Atlantic Salmon</td>
+            <td style="padding:7px 0;font-size:12px;color:#6b7280;padding-left:12px;">45 kg</td>
+            <td style="padding:7px 0;font-size:12px;padding-left:12px;"><span style="display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;">2d left</span></td>
+            <td style="padding:7px 0;font-size:12px;color:#9ca3af;text-align:right;">Zone A2</td>
+          </tr></tbody>
+        </table>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <tr><td style="padding-bottom:10px;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;">
+      <tr><td style="border-left:3px solid #f59e0b;padding:13px 20px 11px;">
+        <span style="font-size:12px;font-weight:600;color:#111827;">Low Stock</span>
+        <span style="font-size:11px;color:#9ca3af;margin-left:8px;">1 item</span>
+      </td></tr>
+      <tr><td style="padding:0 20px 14px;">
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <thead><tr>
+            <th style="padding:0 0 7px 0;text-align:left;font-size:10px;font-weight:500;color:#9ca3af;">Product</th>
+            <th style="padding:0 0 7px 12px;text-align:left;font-size:10px;font-weight:500;color:#9ca3af;">Current</th>
+            <th style="padding:0 0 7px 12px;text-align:left;font-size:10px;font-weight:500;color:#9ca3af;">Minimum</th>
+            <th style="padding:0 0 7px 12px;text-align:right;font-size:10px;font-weight:500;color:#9ca3af;">Location</th>
+          </tr></thead>
+          <tbody><tr>
+            <td style="padding:7px 0;font-size:12px;color:#111827;font-weight:500;">Tiger Prawns</td>
+            <td style="padding:7px 0;font-size:12px;color:#b45309;font-weight:600;padding-left:12px;">8 kg</td>
+            <td style="padding:7px 0;font-size:12px;color:#9ca3af;padding-left:12px;">min 20 kg</td>
+            <td style="padding:7px 0;font-size:12px;color:#9ca3af;text-align:right;">Zone B1</td>
+          </tr></tbody>
+        </table>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <tr><td style="padding-bottom:10px;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;">
+      <tr><td style="border-left:3px solid #3b82f6;padding:13px 20px 11px;">
+        <span style="font-size:12px;font-weight:600;color:#111827;">Reorder Plan</span>
+        <span style="font-size:11px;color:#9ca3af;margin-left:8px;">1 item</span>
+      </td></tr>
+      <tr><td style="padding:0 20px 14px;">
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <thead><tr>
+            <th style="padding:0 0 7px 0;text-align:left;font-size:10px;font-weight:500;color:#9ca3af;">Product</th>
+            <th style="padding:0 0 7px 12px;text-align:left;font-size:10px;font-weight:500;color:#9ca3af;">Qty</th>
+            <th style="padding:0 0 7px 12px;text-align:left;font-size:10px;font-weight:500;color:#9ca3af;">Supplier</th>
+            <th style="padding:0 0 7px 12px;text-align:right;font-size:10px;font-weight:500;color:#9ca3af;">Est. Cost</th>
+          </tr></thead>
+          <tbody><tr>
+            <td style="padding:7px 0;font-size:12px;color:#111827;font-weight:500;">Barramundi</td>
+            <td style="padding:7px 0;font-size:12px;color:#111827;padding-left:12px;">30 units</td>
+            <td style="padding:7px 0;font-size:12px;color:#6b7280;padding-left:12px;">Bidvest</td>
+            <td style="padding:7px 0;font-size:12px;color:#111827;font-weight:600;text-align:right;">$210.00</td>
+          </tr></tbody>
+        </table>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <tr><td style="padding:4px 0 2px;" align="center">
+    <a href="/runs" style="display:inline-block;background:#18181b;color:#fff;text-decoration:none;font-size:12px;font-weight:600;padding:10px 24px;border-radius:8px;">Open Dashboard →</a>
+  </td></tr>
+
+  <tr><td style="padding-top:18px;text-align:center;">
+    <p style="margin:0;font-size:10px;color:#9ca3af;">Polaris runs daily at 6am AEST &mdash; this is a sample of the report you receive each morning</p>
+  </td></tr>
+
+</table>
+</td></tr>
+</table>
+</body>
+</html>`
+
 const steps = [
   {
     popover: {
@@ -20,20 +152,7 @@ const steps = [
         '<li>Scrapes live competitor prices</li>' +
         '<li>Delivers a full report straight to your inbox</li>' +
         '</ul>' +
-        '<div class="tour-email-mock">' +
-        '<div class="tour-em-head">' +
-        '<span class="tour-em-from">From: Polaris Agent</span>' +
-        '<span class="tour-em-subj">Daily Report — 3 items need attention</span>' +
-        '</div>' +
-        '<div class="tour-em-body">' +
-        '<div class="tour-em-row"><span class="tour-em-name"><i class="tour-dot tour-dot-red"></i>Atlantic Salmon</span><span class="tour-em-tag tour-em-red">Expires in 2 days</span></div>' +
-        '<div class="tour-em-row"><span class="tour-em-name"><i class="tour-dot tour-dot-yellow"></i>Tiger Prawns</span><span class="tour-em-tag tour-em-yellow">Reorder 50 kg at $8.40</span></div>' +
-        '<div class="tour-em-row"><span class="tour-em-name"><i class="tour-dot tour-dot-blue"></i>Barramundi</span><span class="tour-em-tag tour-em-blue">Bidvest $0.80/kg cheaper</span></div>' +
-        '</div>' +
-        '<div class="tour-em-foot">' +
-        '<a href="/runs" class="tour-logs-link" onclick="localStorage.setItem(\'polaris-tour-seen-v3\',\'1\')">View Agent Logs →</a>' +
-        '</div>' +
-        '</div>',
+        '<div class="tour-email-iframe-mount"></div>',
       side: 'over' as const,
       align: 'center' as const,
     },
@@ -162,14 +281,28 @@ const steps = [
 function startTour() {
   let driverObj: ReturnType<typeof driver>
 
-  const injectSkip = () => {
+  const onHighlighted = () => {
+    // Skip button — inject into every step footer
     const footer = document.querySelector('.polaris-tour .driver-popover-footer')
-    if (!footer || footer.querySelector('.polaris-skip-btn')) return
-    const btn = document.createElement('button')
-    btn.textContent = 'Skip tour'
-    btn.className = 'polaris-skip-btn'
-    btn.addEventListener('click', () => driverObj.destroy())
-    footer.appendChild(btn)
+    if (footer && !footer.querySelector('.polaris-skip-btn')) {
+      const btn = document.createElement('button')
+      btn.textContent = 'Skip tour'
+      btn.className = 'polaris-skip-btn'
+      btn.addEventListener('click', () => driverObj.destroy())
+      footer.appendChild(btn)
+    }
+
+    // Email iframe — inject only on step 0
+    if (driverObj.getActiveIndex() === 0) {
+      const mount = document.querySelector('.polaris-tour .tour-email-iframe-mount')
+      if (mount && !mount.querySelector('iframe')) {
+        const iframe = document.createElement('iframe')
+        iframe.setAttribute('sandbox', 'allow-same-origin')
+        iframe.style.cssText = 'width:100%;height:100%;border:none;display:block;'
+        iframe.srcdoc = DEMO_EMAIL_HTML
+        mount.appendChild(iframe)
+      }
+    }
   }
 
   driverObj = driver({
@@ -189,7 +322,7 @@ function startTour() {
     allowKeyboardControl: true,
     popoverClass: 'polaris-tour',
     steps,
-    onHighlighted: injectSkip,
+    onHighlighted,
     onDestroyed: () => {
       localStorage.setItem(TOUR_KEY, '1')
     },

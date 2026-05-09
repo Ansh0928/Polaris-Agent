@@ -223,8 +223,23 @@ body {
   font-size: 12.5px;
   line-height: 1.65;
   margin-bottom: 0;
-  max-height: 60vh;
+  max-height: 72vh;
   overflow-y: auto;
+}
+
+.driver-popover.polaris-tour .tour-email-iframe-mount {
+  margin-top: 14px;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  overflow: hidden;
+  height: 340px;
+}
+
+.driver-popover.polaris-tour .tour-email-iframe-mount iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
 }
 
 .driver-popover.polaris-tour .driver-popover-footer {
