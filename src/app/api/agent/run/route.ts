@@ -55,7 +55,36 @@ async function streamAgentRun(req: NextRequest): Promise<Response> {
         const { flagged, allInventory, supplierPrices, websitePrices, toolTrace, reasoningBlocks } =
           await runAgentLoop(DAILY_PROMPT, send, runId)
 
-        const report = await reasonWithHermes(flagged, supplierPrices, websitePrices, allInventory)
+        let report: Awaited<ReturnType<typeof reasonWithHermes>>
+        try {
+          report = await reasonWithHermes(flagged, supplierPrices, websitePrices, allInventory)
+        } catch (reasonErr) {
+          console.error('[route] reasonWithHermes failed — using minimal fallback report:', reasonErr)
+          const now = new Date().toISOString()
+          report = {
+            generated_at: now,
+            expiry_alerts: flagged.filter((f) => f.reason === 'expiry' || f.reason === 'both').map((f) => ({
+              product_name: f.inventory.product.name,
+              quantity: f.inventory.quantity,
+              unit: f.inventory.product.unit,
+              expiry_date: f.inventory.expiry_date ?? '',
+              days_to_expiry: f.inventory.days_to_expiry ?? 0,
+              location: f.inventory.location,
+            })),
+            low_stock_alerts: flagged.filter((f) => f.reason === 'low_stock' || f.reason === 'both').map((f) => ({
+              product_name: f.inventory.product.name,
+              quantity: f.inventory.quantity,
+              unit: f.inventory.product.unit,
+              threshold: f.inventory.product.reorder_threshold,
+              location: f.inventory.location,
+            })),
+            reorder_recommendations: [],
+            supplier_prices: supplierPrices,
+            website_prices: websitePrices,
+            margin_alerts: [],
+            summary: `[Synthesis unavailable — ${flagged.length} items flagged. Raw data preserved in tool trace.]`,
+          }
+        }
         const extendedReport = { ...report, tool_trace: toolTrace, reasoning_blocks: reasoningBlocks }
 
         const shouldEmail = flagged.length > 0 || websitePrices.length > 0
@@ -124,7 +153,36 @@ export async function POST(req: NextRequest) {
     const { flagged, allInventory, supplierPrices, websitePrices, toolTrace, reasoningBlocks } =
       await runAgentLoop(DAILY_PROMPT, undefined, runId)
 
-    const report = await reasonWithHermes(flagged, supplierPrices, websitePrices, allInventory)
+    let report: Awaited<ReturnType<typeof reasonWithHermes>>
+    try {
+      report = await reasonWithHermes(flagged, supplierPrices, websitePrices, allInventory)
+    } catch (reasonErr) {
+      console.error('[route] reasonWithHermes failed — using minimal fallback report:', reasonErr)
+      const now = new Date().toISOString()
+      report = {
+        generated_at: now,
+        expiry_alerts: flagged.filter((f) => f.reason === 'expiry' || f.reason === 'both').map((f) => ({
+          product_name: f.inventory.product.name,
+          quantity: f.inventory.quantity,
+          unit: f.inventory.product.unit,
+          expiry_date: f.inventory.expiry_date ?? '',
+          days_to_expiry: f.inventory.days_to_expiry ?? 0,
+          location: f.inventory.location,
+        })),
+        low_stock_alerts: flagged.filter((f) => f.reason === 'low_stock' || f.reason === 'both').map((f) => ({
+          product_name: f.inventory.product.name,
+          quantity: f.inventory.quantity,
+          unit: f.inventory.product.unit,
+          threshold: f.inventory.product.reorder_threshold,
+          location: f.inventory.location,
+        })),
+        reorder_recommendations: [],
+        supplier_prices: supplierPrices,
+        website_prices: websitePrices,
+        margin_alerts: [],
+        summary: `[Synthesis unavailable — ${flagged.length} items flagged. Raw data preserved in tool trace.]`,
+      }
+    }
     const extendedReport = { ...report, tool_trace: toolTrace, reasoning_blocks: reasoningBlocks }
 
     const shouldEmail = flagged.length > 0 || websitePrices.length > 0
