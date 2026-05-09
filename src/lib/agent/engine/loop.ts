@@ -4,10 +4,9 @@ import { loadMemory } from './memory'
 import { loadSkills } from './skills'
 import { createClientForRun, createGroqClient, createOpenRouterClient, type OpenAIStyleMessage } from '@/lib/ollama-client'
 import { saveCheckpoint } from './checkpoint'
-import { withRetry } from './retry'
 
 const MODEL = (process.env.LLM_MODEL ?? 'qwen3:14b').trim()
-const MAX_ITERATIONS = 7
+const MAX_ITERATIONS = 9
 
 function extractThinkBlocks(text: string): string[] {
   const blocks: string[] = []
@@ -259,6 +258,12 @@ export async function runAgentLoop(
         messages.push({
           role: 'user',
           content: 'Now call write_memory to save any useful observations (e.g. margin trends, supplier preferences, seasonal notes). Then respond with your final analysis.',
+        })
+      } else if (toolsThisIter.includes('write_memory') && done.has('check_inventory') && done.has('flag_alerts') && done.has('check_website_prices')) {
+        // Workflow complete — agent has all data it needs. Force final response.
+        messages.push({
+          role: 'user',
+          content: 'Good. All data gathered. Now write your final analysis response covering: expiry/low-stock alerts, margin health, and reorder recommendations with quantities and AUD prices. Do not call any more tools.',
         })
       }
     }
