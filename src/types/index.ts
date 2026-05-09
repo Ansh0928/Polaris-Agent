@@ -79,6 +79,8 @@ export interface PurchaseOrderSummary {
   price_per_unit_aud: number | null
   agent_reason: string
   approve_token: string
+  status: 'draft' | 'approved' | 'received' | 'cancelled'
+  created_at: string
 }
 
 export interface WebsitePrice {
