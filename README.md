@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/polaris-logo.png" alt="Polaris" width="90">
+</p>
+
 # Polaris — Autonomous Inventory Management Agent
 
 **Polaris** is an autonomous AI agent for fresh food warehouse inventory management. It monitors stock levels, flags expiry and reorder risks, fetches live retail prices from the web, calculates profit margins, and emails daily intelligence — all without human intervention.
@@ -21,43 +25,9 @@ Most inventory tools alert you when stock is low. Polaris goes further — it au
 
 ## Architecture
 
-```
-┌──────────────────────────────────────────────────────────┐
-│                     GitHub Actions Cron                  │
-│              (daily 6am AEST / 20:00 UTC)                │
-└─────────────────────────┬────────────────────────────────┘
-                          │ POST /api/agent/run
-                          ▼
-┌──────────────────────────────────────────────────────────┐
-│                      Agent Loop (LLM)                    │
-│                                                          │
-│  System Prompt = role + injected memory + loaded skills  │
-│                                                          │
-│  ┌──────────┐    tool_calls?    ┌─────────────────────┐  │
-│  │ LLM Call │ ────────────────► │   Tool Executor     │  │
-│  │          │ ◄──────────────── │  check_inventory    │  │
-│  └──────────┘   tool results   │  flag_alerts        │  │
-│       │                        │  check_website_prices│  │
-│       │ finish_reason=stop     │  fetch_supplier_prices│  │
-│       ▼                        │  write_memory       │  │
-│  Final Response                │  read_memory        │  │
-└──────────────┬─────────────────└─────────────────────┘──┘
-               │
-               ▼
-┌──────────────────────────────────────────────────────────┐
-│              LLM Reasoning (JSON synthesis)               │
-│   Structured report: alerts + margins + recommendations   │
-└──────────────┬───────────────────────────────────────────┘
-               │
-       ┌───────┴───────┐
-       ▼               ▼
-┌────────────┐  ┌──────────────────┐
-│   Resend   │  │  Neon PostgreSQL  │
-│   Email    │  │  agent_runs      │
-│  (daily)   │  │  reorder_log     │
-└────────────┘  │  agent_memory    │
-               └──────────────────┘
-```
+<p align="center">
+  <img src="docs/architecture.png" alt="Polaris Architecture Diagram" width="100%">
+</p>
 
 ---
 
