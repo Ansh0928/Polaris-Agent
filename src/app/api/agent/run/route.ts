@@ -5,6 +5,7 @@ import { runAgentLoop } from '@/lib/agent/engine/loop'
 import type { ToolCallEvent } from '@/lib/agent/engine/loop'
 import { reasonWithHermes } from '@/lib/agent/reason'
 import { sendDailyEmail, buildEmailHtml } from '@/lib/agent/email'
+import type { PurchaseOrderSummary } from '@/types'
 
 export const maxDuration = 300
 
