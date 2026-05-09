@@ -10,8 +10,9 @@ export async function GET() {
     checkOllamaHealth(llmBaseUrl),
   ])
 
-  const groqOk = !!process.env.GROQ_API_KEY
-  const llmReady = tunnelOk || groqOk
+  const groqOk = !!(process.env.GROQ_API_KEY ?? '').trim()
+  const openRouterOk = !!process.env.OPENROUTER_API_KEY
+  const llmReady = tunnelOk || groqOk || openRouterOk
 
   const domainHint = llmBaseUrl
     .replace(/\/v1\/?$/, '')
@@ -28,6 +29,7 @@ export async function GET() {
       db: dbOk ? 'ok' : 'error',
       tunnel: tunnelOk ? 'ok' : 'down',
       groq_fallback: groqOk ? 'configured' : 'missing',
+      openrouter_fallback: openRouterOk ? 'configured' : 'missing',
       llm_ready: llmReady,
       llm_endpoint: domainHint,
       checked_at: new Date().toISOString(),

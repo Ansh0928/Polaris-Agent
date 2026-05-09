@@ -95,45 +95,48 @@ Return a JSON object with this exact structure:
   const llmBaseUrl = (process.env.LLM_BASE_URL ?? 'http://localhost:11434/v1').trim()
   const model = (process.env.LLM_MODEL ?? 'qwen3:14b').trim()
 
+  const reasonMessages = [
+    { role: 'system' as const, content: systemPrompt },
+    { role: 'user' as const, content: userPrompt },
+  ]
+  const reasonParams = { response_format: { type: 'json_object' as const }, temperature: 0.2, max_tokens: 2000 }
+
   let client = await createClientForRun(llmBaseUrl)
   let response: Awaited<ReturnType<typeof client.chat.completions.create>>
   try {
-    response = await client.chat.completions.create({
-      model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.2,
-      max_tokens: 2000,
-    })
+    response = await client.chat.completions.create({ model, messages: reasonMessages, ...reasonParams })
   } catch (err) {
+    const msg = err instanceof Error ? err.message : ''
     const isOllamaFailure = err instanceof Error && (
       err.name === 'TimeoutError' ||
-      err.message.toLowerCase().includes('timeout') ||
-      err.message.startsWith('Ollama ')
+      msg.toLowerCase().includes('timeout') ||
+      msg.startsWith('Ollama ')
     )
-    if (isOllamaFailure && ((process.env.GROQ_API_KEY ?? '').trim() || process.env.OPENROUTER_API_KEY)) {
-      if ((process.env.GROQ_API_KEY ?? '').trim()) {
-        console.log(`[reason] Ollama failed (${(err as Error).message.slice(0, 80)}) — falling back to Groq`)
-        client = createGroqClient()
-      } else {
-        console.log(`[reason] Ollama failed (${(err as Error).message.slice(0, 80)}) — falling back to OpenRouter`)
-        client = createOpenRouterClient()
-      }
-      response = await client.chat.completions.create({
-        model,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        response_format: { type: 'json_object' },
-        temperature: 0.2,
-        max_tokens: 2000,
-      })
+    const isGroqRateLimit = msg.startsWith('Groq 429') || msg.includes('Groq: max rate limit retries exceeded')
+    if (isGroqRateLimit && process.env.OPENROUTER_API_KEY) {
+      console.log(`[reason] Groq rate limit — falling back to OpenRouter`)
+      client = createOpenRouterClient()
+    } else if (isOllamaFailure && (process.env.GROQ_API_KEY ?? '').trim()) {
+      console.log(`[reason] Ollama failed (${msg.slice(0, 80)}) — falling back to Groq`)
+      client = createGroqClient()
+    } else if (isOllamaFailure && process.env.OPENROUTER_API_KEY) {
+      console.log(`[reason] Ollama failed (${msg.slice(0, 80)}) — falling back to OpenRouter`)
+      client = createOpenRouterClient()
     } else {
       throw err
+    }
+    try {
+      response = await client.chat.completions.create({ model, messages: reasonMessages, ...reasonParams })
+    } catch (err2) {
+      const msg2 = err2 instanceof Error ? err2.message : ''
+      const isGroqRateLimit2 = msg2.startsWith('Groq 429') || msg2.includes('Groq: max rate limit retries exceeded')
+      if (isGroqRateLimit2 && process.env.OPENROUTER_API_KEY) {
+        console.log(`[reason] Groq rate limit on fallback — switching to OpenRouter`)
+        client = createOpenRouterClient()
+        response = await client.chat.completions.create({ model, messages: reasonMessages, ...reasonParams })
+      } else {
+        throw err2
+      }
     }
   }
 
