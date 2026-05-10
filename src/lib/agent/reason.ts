@@ -99,7 +99,7 @@ Return a JSON object with this exact structure:
     { role: 'system' as const, content: systemPrompt },
     { role: 'user' as const, content: userPrompt },
   ]
-  const reasonParams = { response_format: { type: 'json_object' as const }, temperature: 0.2, max_tokens: 2000 }
+  const reasonParams = { response_format: { type: 'json_object' as const }, temperature: 0.2, max_tokens: 4000 }
 
   let client = await createClientForRun(llmBaseUrl)
   let response: Awaited<ReturnType<typeof client.chat.completions.create>>

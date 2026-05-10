@@ -118,6 +118,7 @@ function makeOpenAICompatClient(
     if (params.tools && (params.tools as unknown[]).length > 0) body.tools = params.tools
     if (params.tool_choice) body.tool_choice = params.tool_choice
     if (params.response_format) body.response_format = params.response_format
+    if (params.max_tokens) body.max_tokens = params.max_tokens
 
     const MAX_RATE_LIMIT_RETRIES = maxRetries
     for (let attempt = 1; attempt <= MAX_RATE_LIMIT_RETRIES + 1; attempt++) {
