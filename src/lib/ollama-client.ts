@@ -155,9 +155,11 @@ export function createGroqClient() {
   return makeOpenAICompatClient(
     'https://api.groq.com/openai/v1/chat/completions',
     (process.env.GROQ_API_KEY ?? '').trim(),
-    (process.env.GROQ_MODEL ?? 'llama-3.3-70b-versatile').trim(),
+    // llama-3.1-8b-instant: 20,000 TPM vs 6,000 TPM for 70b — avoids rate-limit waits in 9-iter loop
+    (process.env.GROQ_MODEL ?? 'llama-3.1-8b-instant').trim(),
     'Groq',
     60_000,
+    1,  // fail fast on 429, cascade to OpenRouter rather than waiting 15s × 2
   )
 }
 

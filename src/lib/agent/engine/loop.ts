@@ -6,7 +6,7 @@ import { createClientForRun, createGroqClient, createOpenRouterClient, type Open
 import { saveCheckpoint } from './checkpoint'
 
 const MODEL = (process.env.LLM_MODEL ?? 'qwen3:14b').trim()
-const MAX_ITERATIONS = 9
+const MAX_ITERATIONS = 7
 const MULTI_CALL_ALLOWED = new Set(['create_purchase_order'])
 
 function extractThinkBlocks(text: string): string[] {
