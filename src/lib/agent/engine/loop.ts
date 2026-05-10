@@ -149,13 +149,18 @@ export async function runAgentLoop(
           console.log(`[loop] Ollama call failed (${msg.slice(0, 80)}) — switching to OpenRouter for remaining iterations`)
           client = createOpenRouterClient()
         }
-        response = await client.chat.completions.create({
-          model: MODEL,
-          messages,
-          tools: TOOL_DEFINITIONS,
-          tool_choice: 'auto',
-          temperature: 0.2,
-        })
+        try {
+          response = await client.chat.completions.create({
+            model: MODEL,
+            messages,
+            tools: TOOL_DEFINITIONS,
+            tool_choice: 'auto',
+            temperature: 0.2,
+          })
+        } catch (retryErr) {
+          const retryMsg = retryErr instanceof Error ? retryErr.message : String(retryErr)
+          throw new Error(`LLM fallback exhausted (primary: ${msg.slice(0, 80)}, fallback: ${retryMsg.slice(0, 80)})`)
+        }
       } else {
         throw err
       }
