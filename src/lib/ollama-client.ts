@@ -177,6 +177,13 @@ export function createOpenRouterClient() {
 
 type LLMClient = ReturnType<typeof createOllamaClient>
 
+function sanitizeMessagesForGroq(messages: OpenAIStyleMessage[]): OpenAIStyleMessage[] {
+  // Groq rejects assistant messages with content: null — replace with empty string
+  return messages.map((m) =>
+    m.role === 'assistant' && m.content === null ? { ...m, content: '' } : m
+  )
+}
+
 function withGroqFallback(primary: LLMClient, label: string): LLMClient {
   const groqKey = (process.env.GROQ_API_KEY ?? '').trim()
   if (!groqKey) return primary
@@ -190,12 +197,14 @@ function withGroqFallback(primary: LLMClient, label: string): LLMClient {
             return await primaryCreate(params)
           } catch (err) {
             const msg = err instanceof Error ? err.message : String(err)
-            // Cascade on: rate limits (429), provider errors with retry_after_seconds (Venice/other bad providers)
+            // Cascade on: rate limits, timeouts, and provider-specific errors
             const shouldCascade = msg.includes('429') || msg.includes('rate limit') ||
+              msg.includes('timeout') || err instanceof Error && err.name === 'TimeoutError' ||
               (msg.startsWith('OpenRouter') && msg.includes('retry_after_seconds'))
             if (shouldCascade) {
               console.log(`[loop] ${label} unavailable (${msg.slice(0, 80)}) — cascading to Groq`)
-              return groq.chat.completions.create(params)
+              const sanitized = { ...params, messages: sanitizeMessagesForGroq(params.messages) }
+              return groq.chat.completions.create(sanitized)
             }
             throw err
           }
