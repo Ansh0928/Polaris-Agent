@@ -53,3 +53,4 @@ migrations/000_drop_all.sql
 # YOLO model weights (downloaded at build time)
 *.pt
 *.onnx
+.env*.local

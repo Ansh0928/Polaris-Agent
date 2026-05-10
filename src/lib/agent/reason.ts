@@ -113,7 +113,10 @@ Return a JSON object with this exact structure:
     throw new Error('reasonWithHermes: LLM returned no choices')
   }
 
-  const content = response.choices[0]?.message?.content ?? ''
+  const msg0 = response.choices[0]?.message as Record<string, unknown>
+  // gpt-oss-20b may put output in reasoning_content when content is null
+  const content = (msg0?.content as string | null) || (msg0?.reasoning_content as string | null) || ''
+  console.log('[reason] response msg keys:', Object.keys(msg0 ?? {}), '| content length:', content.length, '| content[:200]:', content.slice(0, 200))
 
   let report: AgentReport
   try {

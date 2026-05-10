@@ -2,6 +2,7 @@ import type { FlaggedItem, SupplierResult, WebsitePrice, InventoryWithProduct, T
 import { TOOL_DEFINITIONS, executeTool } from './tools'
 import { loadMemory } from './memory'
 import { loadSkills } from './skills'
+import { loadSoul } from './soul'
 import { createClientForRun, createGroqClient, createOpenRouterClient, type OpenAIStyleMessage } from '@/lib/ollama-client'
 import { saveCheckpoint } from './checkpoint'
 
@@ -82,13 +83,12 @@ export async function runAgentLoop(
   runId?: string,
 ): Promise<LoopResult> {
   const [memory, skills] = await Promise.all([loadMemory(), Promise.resolve(loadSkills())])
+  const soul = loadSoul()
 
   const llmBaseUrl = (process.env.LLM_BASE_URL ?? 'http://localhost:11434/v1').trim()
 
   const systemPrompt = [
-    'You are Polaris, an autonomous fresh food warehouse inventory management agent.',
-    'Your role: analyse current stock levels, identify expiry and reorder risks,',
-    'fetch live supplier prices, and generate clear reorder recommendations.',
+    soul,
     'Use the available tools to gather data before synthesising recommendations.',
     'Be specific -- include product names, quantities (with units), and AUD prices.',
     'After gathering data, save any useful observations via write_memory.',
