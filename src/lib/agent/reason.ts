@@ -149,7 +149,12 @@ Return a JSON object with this exact structure:
   let report: AgentReport
   try {
     if (!content) throw new Error('empty response from model')
-    const jsonStr = content.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim()
+    // Strip code fences, then extract first {...} block — handles models that prefix reasoning text
+    const stripped = content.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '')
+    const jsonStart = stripped.indexOf('{')
+    const jsonEnd = stripped.lastIndexOf('}')
+    if (jsonStart === -1 || jsonEnd === -1) throw new Error('no JSON object found in response')
+    const jsonStr = stripped.slice(jsonStart, jsonEnd + 1)
     const parsed = JSON.parse(jsonStr) as AgentReport
     if (!Array.isArray(parsed.expiry_alerts)) throw new Error('expiry_alerts not array')
     if (!Array.isArray(parsed.low_stock_alerts)) throw new Error('low_stock_alerts not array')
