@@ -133,7 +133,8 @@ export async function runAgentLoop(
         msg.toLowerCase().includes('timeout') ||
         msg.startsWith('Ollama ')
       )
-      const isGroqRateLimit = msg.startsWith('Groq 429') || msg.includes('Groq: max rate limit retries exceeded')
+      // 413 = request too large for Groq free tier (6k TPM) — treat same as rate limit, cascade to OpenRouter
+      const isGroqRateLimit = msg.startsWith('Groq 429') || msg.startsWith('Groq 413') || msg.includes('Groq: max rate limit retries exceeded')
       const isOpenRouterRateLimit = msg.startsWith('OpenRouter 429') || (msg.includes('OpenRouter') && msg.includes('429')) ||
         (msg.startsWith('OpenRouter ') && msg.includes('retry_after_seconds'))
       if ((isOllamaFailure || isGroqRateLimit || isOpenRouterRateLimit) && ((process.env.GROQ_API_KEY ?? '').trim() || process.env.OPENROUTER_API_KEY)) {
