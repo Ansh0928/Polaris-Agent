@@ -178,12 +178,12 @@ export function createOpenRouterClient() {
 type LLMClient = ReturnType<typeof createOllamaClient>
 
 function sanitizeMessagesForGroq(messages: OpenAIStyleMessage[]): OpenAIStyleMessage[] {
-  // Groq rejects: content:null on assistant messages, and unsupported fields like reasoning_details
+  // Whitelist only fields Groq accepts — OpenRouter adds reasoning_details, refusal, etc. that Groq rejects
   return messages.map((m) => {
     if (m.role !== 'assistant') return m
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { reasoning_details, ...rest } = m as OpenAIStyleMessage & { reasoning_details?: unknown }
-    return { ...rest, content: rest.content ?? '' }
+    const clean: OpenAIStyleMessage = { role: 'assistant', content: m.content ?? '' }
+    if (m.tool_calls?.length) clean.tool_calls = m.tool_calls
+    return clean
   })
 }
 
