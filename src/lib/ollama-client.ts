@@ -94,6 +94,7 @@ function makeOpenAICompatClient(
   defaultModel: string,
   label: string,
   timeoutMs = 60_000,
+  maxRetries = 2,
 ) {
   const create = async (params: {
     model: string
@@ -114,7 +115,7 @@ function makeOpenAICompatClient(
     if (params.tool_choice) body.tool_choice = params.tool_choice
     if (params.response_format) body.response_format = params.response_format
 
-    const MAX_RATE_LIMIT_RETRIES = 2
+    const MAX_RATE_LIMIT_RETRIES = maxRetries
     for (let attempt = 1; attempt <= MAX_RATE_LIMIT_RETRIES + 1; attempt++) {
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -162,8 +163,36 @@ export function createOpenRouterClient() {
     process.env.OPENROUTER_API_KEY ?? '',
     (process.env.OPENROUTER_MODEL ?? 'qwen/qwen3-next-80b-a3b-instruct:free').trim(),
     'OpenRouter',
-    90_000,
+    45_000,
+    0,
   )
+}
+
+type LLMClient = ReturnType<typeof createOllamaClient>
+
+function withGroqFallback(primary: LLMClient, label: string): LLMClient {
+  const groqKey = (process.env.GROQ_API_KEY ?? '').trim()
+  if (!groqKey) return primary
+  const groq = createGroqClient()
+  const primaryCreate = primary.chat.completions.create
+  return {
+    chat: {
+      completions: {
+        create: async (params) => {
+          try {
+            return await primaryCreate(params)
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err)
+            if (msg.includes('429') || msg.includes('rate limit')) {
+              console.log(`[loop] ${label} rate limited — cascading to Groq`)
+              return groq.chat.completions.create(params)
+            }
+            throw err
+          }
+        },
+      },
+    },
+  }
 }
 
 export async function createClientForRun(llmBaseUrl: string) {
@@ -172,8 +201,8 @@ export async function createClientForRun(llmBaseUrl: string) {
   console.log('[loop] Ollama unreachable — trying fallbacks')
 
   if (process.env.OPENROUTER_API_KEY) {
-    console.log('[loop] routing to OpenRouter')
-    return createOpenRouterClient()
+    console.log('[loop] routing to OpenRouter (Groq cascade on 429)')
+    return withGroqFallback(createOpenRouterClient(), 'OpenRouter')
   }
 
   if ((process.env.GROQ_API_KEY ?? '').trim()) {
