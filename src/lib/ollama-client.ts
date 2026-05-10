@@ -208,14 +208,15 @@ export async function createClientForRun(llmBaseUrl: string) {
   if (healthy) return createOllamaClient(llmBaseUrl)
   console.log('[loop] Ollama unreachable — trying fallbacks')
 
-  if (process.env.OPENROUTER_API_KEY) {
-    console.log('[loop] routing to OpenRouter (Groq cascade on 429)')
-    return withGroqFallback(createOpenRouterClient(), 'OpenRouter')
+  // Prefer Groq: LPU inference is faster and has no provider routing issues (unlike OpenRouter free tier)
+  if ((process.env.GROQ_API_KEY ?? '').trim()) {
+    console.log('[loop] routing to Groq (llama-3.3-70b-versatile)')
+    return createGroqClient()
   }
 
-  if ((process.env.GROQ_API_KEY ?? '').trim()) {
-    console.log('[loop] routing to Groq')
-    return createGroqClient()
+  if (process.env.OPENROUTER_API_KEY) {
+    console.log('[loop] routing to OpenRouter')
+    return createOpenRouterClient()
   }
 
   throw new Error('No LLM available: Ollama unreachable and no API keys configured')
