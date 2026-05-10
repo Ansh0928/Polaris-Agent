@@ -155,7 +155,7 @@ export function createGroqClient() {
   return makeOpenAICompatClient(
     'https://api.groq.com/openai/v1/chat/completions',
     (process.env.GROQ_API_KEY ?? '').trim(),
-    (process.env.GROQ_MODEL ?? 'llama-3.1-8b-instant').trim(),
+    (process.env.GROQ_MODEL ?? 'llama-3.3-70b-versatile').trim(),
     'Groq',
     60_000,
   )
@@ -165,7 +165,8 @@ export function createOpenRouterClient() {
   return makeOpenAICompatClient(
     'https://openrouter.ai/api/v1/chat/completions',
     process.env.OPENROUTER_API_KEY ?? '',
-    (process.env.OPENROUTER_MODEL ?? 'qwen/qwen3-next-80b-a3b-instruct:free').trim(),
+    // qwen3-next-80b routes to Venice which breaks tool calling — use qwen3-14b (Nebius) instead
+    (process.env.OPENROUTER_MODEL ?? 'qwen/qwen3-14b:free').trim(),
     'OpenRouter',
     45_000,
     1,  // retry once after parsing retry_after_seconds before cascading to Groq
@@ -187,8 +188,11 @@ function withGroqFallback(primary: LLMClient, label: string): LLMClient {
             return await primaryCreate(params)
           } catch (err) {
             const msg = err instanceof Error ? err.message : String(err)
-            if (msg.includes('429') || msg.includes('rate limit')) {
-              console.log(`[loop] ${label} rate limited — cascading to Groq`)
+            // Cascade on: rate limits (429), provider errors with retry_after_seconds (Venice/other bad providers)
+            const shouldCascade = msg.includes('429') || msg.includes('rate limit') ||
+              (msg.startsWith('OpenRouter') && msg.includes('retry_after_seconds'))
+            if (shouldCascade) {
+              console.log(`[loop] ${label} unavailable (${msg.slice(0, 80)}) — cascading to Groq`)
               return groq.chat.completions.create(params)
             }
             throw err

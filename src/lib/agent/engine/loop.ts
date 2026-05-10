@@ -134,7 +134,8 @@ export async function runAgentLoop(
         msg.startsWith('Ollama ')
       )
       const isGroqRateLimit = msg.startsWith('Groq 429') || msg.includes('Groq: max rate limit retries exceeded')
-      const isOpenRouterRateLimit = msg.startsWith('OpenRouter 429') || (msg.includes('OpenRouter') && msg.includes('429'))
+      const isOpenRouterRateLimit = msg.startsWith('OpenRouter 429') || (msg.includes('OpenRouter') && msg.includes('429')) ||
+        (msg.startsWith('OpenRouter ') && msg.includes('retry_after_seconds'))
       if ((isOllamaFailure || isGroqRateLimit || isOpenRouterRateLimit) && ((process.env.GROQ_API_KEY ?? '').trim() || process.env.OPENROUTER_API_KEY)) {
         if (isOpenRouterRateLimit && (process.env.GROQ_API_KEY ?? '').trim()) {
           console.log(`[loop] OpenRouter rate limited — switching to Groq for remaining iterations`)
