@@ -84,8 +84,12 @@ export async function checkOllamaHealth(llmBaseUrl: string): Promise<boolean> {
 function parseRetryAfterMs(errorBody: string, headers: Headers): number {
   const retryAfterHeader = headers.get('retry-after')
   if (retryAfterHeader) return parseFloat(retryAfterHeader) * 1000 + 500
-  const match = errorBody.match(/try again in ([\d.]+)s/)
-  return match ? Math.ceil(parseFloat(match[1]) * 1000) + 500 : 15_000
+  const textMatch = errorBody.match(/try again in ([\d.]+)s/)
+  if (textMatch) return Math.ceil(parseFloat(textMatch[1]) * 1000) + 500
+  // OpenRouter JSON: {"error":{"metadata":{"retry_after_seconds":N}}}
+  const jsonMatch = errorBody.match(/"retry_after_seconds"\s*:\s*([\d.]+)/)
+  if (jsonMatch) return Math.ceil(parseFloat(jsonMatch[1]) * 1000) + 500
+  return 15_000
 }
 
 function makeOpenAICompatClient(
@@ -164,7 +168,7 @@ export function createOpenRouterClient() {
     (process.env.OPENROUTER_MODEL ?? 'qwen/qwen3-next-80b-a3b-instruct:free').trim(),
     'OpenRouter',
     45_000,
-    0,
+    1,  // retry once after parsing retry_after_seconds before cascading to Groq
   )
 }
 
