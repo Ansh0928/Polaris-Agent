@@ -54,3 +54,8 @@ migrations/000_drop_all.sql
 *.pt
 *.onnx
 .env*.local
+
+# Local-only launch video (never push)
+Polaris\ Launch.html
+screenshot-*.jpg
+screenshot-*.png
