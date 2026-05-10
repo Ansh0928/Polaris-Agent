@@ -170,7 +170,7 @@ export function createOpenRouterClient() {
     // gpt-oss-20b: 131k context, reliable tool calling, no TPM cap on free tier
     (process.env.OPENROUTER_MODEL ?? 'openai/gpt-oss-20b:free').trim(),
     'OpenRouter',
-    45_000,
+    90_000,  // gpt-oss-20b cold start can hit 60s; 90s gives headroom within 300s Vercel limit
     1,  // retry once after parsing retry_after_seconds before cascading to Groq
   )
 }
@@ -200,9 +200,9 @@ function withGroqFallback(primary: LLMClient, label: string): LLMClient {
             return await primaryCreate(params)
           } catch (err) {
             const msg = err instanceof Error ? err.message : String(err)
-            // Cascade on: rate limits, timeouts, and provider-specific errors
+            // Cascade on 429/rate-limit ONLY — not timeout. Groq free tier has 6k TPM,
+            // which is below our context size; cascading on timeout causes Groq 413 → double failure.
             const shouldCascade = msg.includes('429') || msg.includes('rate limit') ||
-              msg.includes('timeout') || err instanceof Error && err.name === 'TimeoutError' ||
               (msg.startsWith('OpenRouter') && msg.includes('retry_after_seconds'))
             if (shouldCascade) {
               console.log(`[loop] ${label} unavailable (${msg.slice(0, 80)}) — cascading to Groq`)
