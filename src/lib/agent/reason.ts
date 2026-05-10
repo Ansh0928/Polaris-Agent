@@ -1,5 +1,5 @@
 import type { FlaggedItem, SupplierResult, WebsitePrice, InventoryWithProduct, AgentReport } from '@/types'
-import { createClientForRun, createGroqClient, createOpenRouterClient } from '@/lib/ollama-client'
+import { checkOllamaHealth, createOllamaClient, createOpenRouterClient } from '@/lib/ollama-client'
 
 export async function reasonWithHermes(
   flagged: FlaggedItem[],
@@ -101,44 +101,13 @@ Return a JSON object with this exact structure:
   ]
   const reasonParams = { response_format: { type: 'json_object' as const }, temperature: 0.2, max_tokens: 4000 }
 
-  let client = await createClientForRun(llmBaseUrl)
-  let response: Awaited<ReturnType<typeof client.chat.completions.create>>
-  try {
-    response = await client.chat.completions.create({ model, messages: reasonMessages, ...reasonParams })
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : ''
-    const isOllamaFailure = err instanceof Error && (
-      err.name === 'TimeoutError' ||
-      msg.toLowerCase().includes('timeout') ||
-      msg.startsWith('Ollama ')
-    )
-    const isGroqRateLimit = msg.startsWith('Groq 429') || msg.includes('Groq: max rate limit retries exceeded')
-    if (isGroqRateLimit && process.env.OPENROUTER_API_KEY) {
-      console.log(`[reason] Groq rate limit — falling back to OpenRouter`)
-      client = createOpenRouterClient()
-    } else if (isOllamaFailure && (process.env.GROQ_API_KEY ?? '').trim()) {
-      console.log(`[reason] Ollama failed (${msg.slice(0, 80)}) — falling back to Groq`)
-      client = createGroqClient()
-    } else if (isOllamaFailure && process.env.OPENROUTER_API_KEY) {
-      console.log(`[reason] Ollama failed (${msg.slice(0, 80)}) — falling back to OpenRouter`)
-      client = createOpenRouterClient()
-    } else {
-      throw err
-    }
-    try {
-      response = await client.chat.completions.create({ model, messages: reasonMessages, ...reasonParams })
-    } catch (err2) {
-      const msg2 = err2 instanceof Error ? err2.message : ''
-      const isGroqRateLimit2 = msg2.startsWith('Groq 429') || msg2.includes('Groq: max rate limit retries exceeded')
-      if (isGroqRateLimit2 && process.env.OPENROUTER_API_KEY) {
-        console.log(`[reason] Groq rate limit on fallback — switching to OpenRouter`)
-        client = createOpenRouterClient()
-        response = await client.chat.completions.create({ model, messages: reasonMessages, ...reasonParams })
-      } else {
-        throw err2
-      }
-    }
-  }
+  // Reason call uses bare OpenRouter (no Groq wrapper) — Groq free tier can't handle the synthesis
+  // context size (6.5k tokens > 6k TPM). If OpenRouter fails, route.ts buildFallbackReport handles it.
+  const healthy = await checkOllamaHealth(llmBaseUrl)
+  const client = healthy ? createOllamaClient(llmBaseUrl) : createOpenRouterClient()
+  if (!healthy) console.log('[reason] Ollama unreachable — using OpenRouter for synthesis')
+
+  const response = await client.chat.completions.create({ model, messages: reasonMessages, ...reasonParams })
 
   if (!response.choices?.length) {
     throw new Error('reasonWithHermes: LLM returned no choices')
