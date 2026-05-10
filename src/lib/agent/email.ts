@@ -52,7 +52,7 @@ function dataTable(headers: string[], rows: string[]): string {
 
 const TD = 'padding:10px 0;border-bottom:1px solid #f3f4f6;font-size:13px;vertical-align:middle;'
 
-export function buildEmailHtml(report: AgentReport): string {
+export function buildEmailHtml(report: AgentReport, systemAlerts?: string[]): string {
   const alertCount = report.expiry_alerts.length + report.low_stock_alerts.length
   const now = new Date(report.generated_at)
   const dateStr = now.toLocaleDateString('en-AU', {
@@ -221,6 +221,21 @@ export function buildEmailHtml(report: AgentReport): string {
 
   ${(report.margin_alerts ?? []).length > 0 ? section('#8b5cf6', 'Margin Intelligence', 'retail vs cost', dataTable(['Product', 'Retail', 'Cost', 'Margin', 'Status'], marginRows)) : ''}
 
+  ${(systemAlerts ?? []).length > 0 ? `
+  <tr><td style="padding-bottom:12px;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;overflow:hidden;">
+      <tr>
+        <td style="border-left:3px solid #f59e0b;padding:16px 24px 12px;">
+          <span style="font-size:13px;font-weight:600;color:#92400e;">System Health</span>
+          <span style="font-size:12px;color:#b45309;margin-left:8px;">${(systemAlerts ?? []).length} issue${(systemAlerts ?? []).length !== 1 ? 's' : ''} detected</span>
+        </td>
+      </tr>
+      <tr><td style="padding:0 24px 16px;">
+        ${(systemAlerts ?? []).map((a) => `<p style="margin:4px 0;font-size:12px;color:#92400e;">&#x26A0;&#xFE0F; ${esc(a)}</p>`).join('')}
+      </td></tr>
+    </table>
+  </td></tr>` : ''}
+
   <!-- CTA -->
   <tr><td style="padding:8px 0 4px;" align="center">
     <a href="${appUrl}/runs" style="display:inline-block;background:#18181b;color:#ffffff;text-decoration:none;font-size:13px;font-weight:600;padding:11px 28px;border-radius:8px;letter-spacing:0.1px;">
@@ -240,8 +255,8 @@ export function buildEmailHtml(report: AgentReport): string {
 </html>`
 }
 
-export async function sendDailyEmail(report: AgentReport): Promise<string> {
-  const html = buildEmailHtml(report)
+export async function sendDailyEmail(report: AgentReport, systemAlerts?: string[]): Promise<string> {
+  const html = buildEmailHtml(report, systemAlerts)
   const alertCount = report.expiry_alerts.length + report.low_stock_alerts.length
   const dateShort = new Date().toLocaleDateString('en-AU', { timeZone: 'Australia/Sydney' })
 

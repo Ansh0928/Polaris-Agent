@@ -46,6 +46,20 @@ function buildFallbackReport(flagged: FlaggedItem[], supplierPrices: SupplierRes
   }
 }
 
+async function getCompetitorErrors(): Promise<string[]> {
+  try {
+    const rows = await sql`
+      SELECT name, last_result
+      FROM competitor_sources
+      WHERE last_result->>'error' IS NOT NULL
+        AND last_scraped_at > now() - interval '7 days'
+    `
+    return rows.map((r) => `${r.name}: ${(r.last_result as { error?: string })?.error ?? 'unknown error'}`)
+  } catch {
+    return []
+  }
+}
+
 async function fetchDraftPurchaseOrders(runId: string): Promise<PurchaseOrderSummary[]> {
   const rows = await sql`
     SELECT
@@ -122,7 +136,10 @@ async function streamAgentRun(req: NextRequest): Promise<Response> {
           console.error('[route] reasonWithHermes failed — using minimal fallback report:', reasonErr)
           report = buildFallbackReport(flagged, supplierPrices, websitePrices)
         }
-        const purchaseOrders = await fetchDraftPurchaseOrders(runId)
+        const [purchaseOrders, competitorErrors] = await Promise.all([
+          fetchDraftPurchaseOrders(runId),
+          getCompetitorErrors(),
+        ])
 
         const extendedReport = {
           ...report,
@@ -131,8 +148,10 @@ async function streamAgentRun(req: NextRequest): Promise<Response> {
           purchase_orders: purchaseOrders,
         }
 
-        const shouldEmail = flagged.length > 0 || websitePrices.length > 0
-        const emailHtml = shouldEmail ? await sendDailyEmail(report) : buildEmailHtml(report)
+        const shouldEmail = flagged.length > 0 || websitePrices.length > 0 || competitorErrors.length > 0
+        const emailHtml = shouldEmail
+          ? await sendDailyEmail(report, competitorErrors.length > 0 ? competitorErrors : undefined)
+          : buildEmailHtml(report)
         if (shouldEmail) send({ type: 'email_sent', output: process.env.ADMIN_EMAIL ?? '' })
 
         await sql`
@@ -204,7 +223,10 @@ export async function POST(req: NextRequest) {
       console.error('[route] reasonWithHermes failed — using minimal fallback report:', reasonErr)
       report = buildFallbackReport(flagged, supplierPrices, websitePrices)
     }
-    const purchaseOrders = await fetchDraftPurchaseOrders(runId)
+    const [purchaseOrders, competitorErrors] = await Promise.all([
+      fetchDraftPurchaseOrders(runId),
+      getCompetitorErrors(),
+    ])
 
     const extendedReport = {
       ...report,
@@ -213,8 +235,10 @@ export async function POST(req: NextRequest) {
       purchase_orders: purchaseOrders,
     }
 
-    const shouldEmail = flagged.length > 0 || websitePrices.length > 0
-    const emailHtml = shouldEmail ? await sendDailyEmail(report) : buildEmailHtml(report)
+    const shouldEmail = flagged.length > 0 || websitePrices.length > 0 || competitorErrors.length > 0
+    const emailHtml = shouldEmail
+      ? await sendDailyEmail(report, competitorErrors.length > 0 ? competitorErrors : undefined)
+      : buildEmailHtml(report)
 
     await sql`
       UPDATE agent_runs

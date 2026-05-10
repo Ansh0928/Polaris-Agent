@@ -161,9 +161,36 @@ export async function runAgentLoop(
           })
         } catch (retryErr) {
           const retryMsg = retryErr instanceof Error ? retryErr.message : String(retryErr)
+          // If we already collected tool data, return partial results rather than crashing the run
+          if (allToolCalls.length >= 2) {
+            const loopData = extractLoopData(allToolCalls)
+            onEvent?.({ type: 'loop_done', iteration: iterations })
+            return {
+              response: `[Partial] LLM unavailable after ${iterations} iteration${iterations !== 1 ? 's' : ''} (${msg.slice(0, 60)}). ${allToolCalls.length} tool calls completed.`,
+              toolCalls: allToolCalls,
+              ...loopData,
+              toolTrace,
+              reasoningBlocks,
+              iterations,
+            }
+          }
           throw new Error(`LLM fallback exhausted (primary: ${msg.slice(0, 80)}, fallback: ${retryMsg.slice(0, 80)})`)
         }
       } else {
+        // Non-LLM-rate-limit error — return partial results if we have data
+        if (allToolCalls.length >= 2) {
+          const partialMsg = err instanceof Error ? err.message : String(err)
+          const loopData = extractLoopData(allToolCalls)
+          onEvent?.({ type: 'loop_done', iteration: iterations })
+          return {
+            response: `[Partial] LLM error after ${iterations} iteration${iterations !== 1 ? 's' : ''} (${partialMsg.slice(0, 60)}). ${allToolCalls.length} tool calls completed.`,
+            toolCalls: allToolCalls,
+            ...loopData,
+            toolTrace,
+            reasoningBlocks,
+            iterations,
+          }
+        }
         throw err
       }
     }
