@@ -152,6 +152,75 @@ That's the agent reasoning across runs without being told to.
 
 ---
 
+## Sample Report Email
+
+This is what lands in the operator's inbox before the warehouse opens. Built from real agent output — no template, no hardcoded content. The LLM writes the summary line based on what it actually observed.
+
+```
+From:    Polaris <onboarding@resend.dev>
+To:      operator@warehouse.com
+Subject: Polaris — 4 alerts · 10/05/2026
+
+┌─────────────────────────────────────────────────────────────┐
+│  Polaris   Inventory Intelligence          Saturday, 10 May  │
+│                                             06:01 AM AEST    │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ● 4 alerts need attention                                  │
+│                                                             │
+│  Atlantic salmon margin has been declining for 3 days       │
+│  and king prawns are critically low. Two reorders drafted.  │
+│                                                             │
+│  [ 2 expiring ]  [ 2 low stock ]  [ 2 reorders ]           │
+│                  [ 2 orders pending ]                        │
+│                                                             │
+├── Expiry Alerts  2 items ───────────────────────────────────┤
+│                                                             │
+│  Product              Stock    Expires     Location         │
+│  ─────────────────────────────────────────────────────────  │
+│  Atlantic Salmon      12 kg    [ 1d left ] Cold Room        │
+│  King Prawns          8 kg     [ 3d left ] Freezer A        │
+│                                                             │
+├── Low Stock  2 items ───────────────────────────────────────┤
+│                                                             │
+│  Product              Current  Minimum     Location         │
+│  ─────────────────────────────────────────────────────────  │
+│  Barramundi Fillets   2 kg     5 kg        Cold Room        │
+│  Sydney Rock Oysters  1 doz    3 doz       Wet Storage      │
+│                                                             │
+├── Reorder Plan  2 items ────────────────────────────────────┤
+│                                                             │
+│  Product              Qty      Supplier         Est. Cost   │
+│  ─────────────────────────────────────────────────────────  │
+│  Barramundi Fillets   10 kg    PFD Food Svc     $84.90      │
+│  Sydney Rock Oysters  6 doz    Harris Farm      $72.00      │
+│                                                             │
+├── Draft Purchase Orders  2 awaiting approval ───────────────┤
+│                                                             │
+│  Product              Qty      Supplier         Cost  Action│
+│  ─────────────────────────────────────────────────────────  │
+│  Barramundi Fillets   10 kg    PFD Food Svc    $84.90 [Approve]│
+│  Sydney Rock Oysters  6 doz    Harris Farm     $72.00 [Approve]│
+│                                                             │
+├── Margin Intelligence ──────────────────────────────────────┤
+│                                                             │
+│  Product           Retail   Cost    Margin  Status          │
+│  ─────────────────────────────────────────────────────────  │
+│  Atlantic Salmon   $42.00   $28.50  32.1%   [ Warning ]    │
+│  King Prawns       $38.00   $31.20  17.9%   [ Critical ]   │
+│                                                             │
+│              [ Open Dashboard → ]                           │
+│                                                             │
+│  Polaris runs daily at 6am AEST — polaris-agent.vercel.app  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+The summary line ("Atlantic salmon margin has been declining for 3 days...") is written by the LLM after reading current inventory data and its own prior memory entries — not pulled from a template. Every run it's different, because every run the warehouse is different.
+
+The **[Approve]** buttons in Draft Purchase Orders are one-click links — the operator taps from their phone and the PO is confirmed. No login, no dashboard visit required for routine approvals.
+
+---
+
 ## Memory — How It Gets Smarter
 
 After each run the agent writes key observations to a persistent `agent_memory` table:
