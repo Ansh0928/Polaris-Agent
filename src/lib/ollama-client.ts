@@ -109,9 +109,17 @@ function makeOpenAICompatClient(
     response_format?: { type: string }
     [key: string]: unknown
   }) => {
+    // Venice (gpt-oss-20b provider) rejects assistant messages with content: null
+    const safeMessages = params.messages.map((m) => {
+      if (m.role !== 'assistant' || m.content !== null) return m
+      const clean: OpenAIStyleMessage = { role: 'assistant', content: '' }
+      if (m.tool_calls?.length) clean.tool_calls = m.tool_calls
+      return clean
+    })
+
     const body: Record<string, unknown> = {
       model: defaultModel,
-      messages: params.messages,
+      messages: safeMessages,
       temperature: params.temperature ?? 0.2,
       stream: false,
     }
