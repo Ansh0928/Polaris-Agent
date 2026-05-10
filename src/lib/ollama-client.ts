@@ -167,8 +167,8 @@ export function createOpenRouterClient() {
   return makeOpenAICompatClient(
     'https://openrouter.ai/api/v1/chat/completions',
     process.env.OPENROUTER_API_KEY ?? '',
-    // qwen3-next-80b routes to Venice which breaks tool calling — use qwen3-14b (Nebius) instead
-    (process.env.OPENROUTER_MODEL ?? 'qwen/qwen3-14b:free').trim(),
+    // gpt-oss-20b: 131k context, reliable tool calling, no TPM cap on free tier
+    (process.env.OPENROUTER_MODEL ?? 'openai/gpt-oss-20b:free').trim(),
     'OpenRouter',
     45_000,
     1,  // retry once after parsing retry_after_seconds before cascading to Groq
